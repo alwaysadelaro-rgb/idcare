@@ -138,7 +138,7 @@ window.addEventListener('load', () => {
 
 async function loadAll() {
   try {
-    const data = await sb.get('articles_consultation',
+    const data = await sb.get('v_articles_consultation',
       'select=*&order=categorie,designation&limit=500');
     allArticles = data;
     renderStats();
