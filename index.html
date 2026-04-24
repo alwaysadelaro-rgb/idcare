@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>ID-CARE — Consultation Référentiel</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+:root{--navy:#1F3864;--blue:#2E75B6;--teal:#17A589;--orange:#E67E22;--green:#1E8449;--red:#C0392B;--bg:#F0F4F8;--card:#fff;--border:#D1D9E0;--text:#1a2332;--muted:#6B7A8D;--nutr:#D4EFDF;--diab:#D6EAF8;--park:#FDEDEC;--r:12px;--sh:0 2px 16px rgba(31,56,100,.10)}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{font-family:'Space Grotesk',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+.hdr{background:linear-gradient(135deg,var(--navy),#2E75B6);color:#fff;padding:14px 16px 50px;position:relative}
+.hdr h1{font-size:.95rem;font-weight:700;margin-bottom:3px}
+.hdr .sub{font-size:.72rem;opacity:.7}
+.hdr-mode{position:absolute;top:14px;right:16px;background:rgba(255,255,255,.15);color:#fff;font-size:.62rem;font-weight:700;padding:3px 10px;border-radius:99px}
+.search-float{position:relative;margin:-30px 14px 0;z-index:10}
+.search-float input{width:100%;padding:13px 16px 13px 42px;border:none;border-radius:12px;font-family:'Space Grotesk',sans-serif;font-size:.9rem;background:#fff;color:var(--text);outline:none;-webkit-appearance:none;box-shadow:0 4px 20px rgba(0,0,0,.12)}
+.search-float .sico{position:absolute;left:14px;top:50%;transform:translateY(-50%);font-size:1rem;pointer-events:none}
+.content{padding:14px 14px 80px}
+.card{background:var(--card);border-radius:var(--r);border:1px solid var(--border);padding:14px;margin-bottom:10px;box-shadow:var(--sh)}
+.ct{font-size:.64rem;font-weight:700;text-transform:uppercase;letter-spacing:.09em;color:var(--muted);margin-bottom:10px;display:flex;align-items:center;gap:6px}
+.ct .dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.filters{display:flex;gap:6px;overflow-x:auto;padding:14px 14px 4px;scrollbar-width:none}
+.filters::-webkit-scrollbar{display:none}
+.fchip{padding:6px 14px;border-radius:99px;border:1.5px solid var(--border);font-size:.73rem;font-weight:600;cursor:pointer;background:#fff;color:var(--muted);white-space:nowrap;flex-shrink:0;transition:all .15s}
+.fchip.on{background:var(--navy);border-color:var(--navy);color:#fff}
+.fchip.fN.on{background:#1E8449;border-color:#1E8449}
+.fchip.fD.on{background:#2E75B6;border-color:#2E75B6}
+.fchip.fP.on{background:#C0392B;border-color:#C0392B}
+.art-card{background:#fff;border-radius:var(--r);border:1px solid var(--border);margin-bottom:8px;overflow:hidden;cursor:pointer;box-shadow:var(--sh);transition:all .15s}
+.art-card:active{transform:scale(.99)}
+.art-card-head{padding:12px 14px}
+.art-ref{font-size:.78rem;font-weight:700;color:var(--navy)}
+.art-des{font-size:.8rem;font-weight:500;color:var(--text);margin-top:2px;line-height:1.3}
+.art-meta{display:flex;gap:6px;flex-wrap:wrap;margin-top:7px;align-items:center}
+.tag{display:inline-block;font-size:.6rem;font-weight:700;padding:2px 8px;border-radius:99px}
+.tN{background:var(--nutr);color:#1E8449}.tD{background:var(--diab);color:#2E75B6}.tP{background:var(--park);color:#C0392B}
+.tL{background:#F4ECF7;color:#7D3C98}.tC{background:#FDEBD0;color:#D35400}
+.tOK{background:#D5F5E3;color:#1E8449}.tEN{background:#FEF9E7;color:#856404}.tAR{background:#FADBD8;color:#C0392B}
+.gtin-row{background:#f0f9f6;padding:8px 14px;border-top:1px solid var(--border);font-family:'JetBrains Mono',monospace;font-size:.68rem;color:var(--teal);font-weight:600}
+.art-detail{display:none;padding:14px;border-top:1px solid var(--border);background:#fafafa}
+.art-detail.open{display:block}
+.dl-sec{margin-bottom:14px}
+.dl-sec h4{font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:8px;padding-bottom:4px;border-bottom:1px solid var(--border)}
+.dl-row{display:flex;justify-content:space-between;padding:4px 0;font-size:.78rem;border-bottom:1px solid #f0f4f8}
+.dl-row:last-child{border-bottom:none}
+.dl-label{color:var(--muted);font-weight:500}
+.dl-val{font-weight:600;text-align:right;max-width:55%;word-break:break-all}
+.dl-val.empty{color:#ccc;font-style:italic;font-weight:400}
+.photo-row{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:10px}
+.photo-thumb{aspect-ratio:4/3;border-radius:8px;overflow:hidden;background:#f0f4f8;border:1px solid var(--border)}
+.photo-thumb img{width:100%;height:100%;object-fit:cover;cursor:pointer}
+.photo-thumb .ph-lbl{font-size:.58rem;color:var(--muted);text-align:center;padding:4px 2px;font-weight:600}
+.ai-pill{display:inline-block;background:var(--navy);color:#fff;font-size:.6rem;font-weight:700;padding:2px 7px;border-radius:4px;font-family:'JetBrains Mono',monospace;margin:1px}
+.price-badge{background:#FEF9E7;color:#D35400;font-size:.75rem;font-weight:700;padding:4px 10px;border-radius:6px;display:inline-block}
+.loading{display:flex;align-items:center;justify-content:center;gap:10px;padding:40px;color:var(--muted);font-size:.83rem}
+.spinner{width:20px;height:20px;border:2px solid var(--border);border-top-color:var(--teal);border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.empty-state{text-align:center;padding:50px 20px;color:var(--muted)}
+.empty-state .big{font-size:2.5rem;margin-bottom:10px}
+.export-bar{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid var(--border);padding:10px 14px;padding-bottom:calc(10px + env(safe-area-inset-bottom,0px));display:flex;gap:8px;z-index:200;box-shadow:0 -4px 16px rgba(0,0,0,.06)}
+.exp-btn{flex:1;padding:11px;border-radius:10px;border:none;font-family:'Space Grotesk',sans-serif;font-size:.8rem;font-weight:700;cursor:pointer;-webkit-appearance:none}
+.exp-p{background:var(--navy);color:#fff}
+.exp-t{background:var(--teal);color:#fff}
+.config-warning{background:#1a2332;color:#e2e8f0;border-radius:10px;padding:16px;margin:16px;font-family:'JetBrains Mono',monospace;font-size:.72rem;line-height:1.8}
+</style>
+</head>
+<body>
+
+<div class="hdr">
+  <h1>🔍 ID-CARE — Référentiel Articles</h1>
+  <div class="sub">Consultation — données en temps réel depuis Supabase</div>
+  <span class="hdr-mode">CONSULTATION</span>
+</div>
+
+<div class="search-float">
+  <span class="sico">🔍</span>
+  <input id="searchInput" type="text" placeholder="Référence Q2, désignation, GTIN…" autocomplete="off" autocorrect="off" spellcheck="false" oninput="filterArticles(this.value)">
+</div>
+
+<div class="filters">
+  <div class="fchip on" onclick="setFilter('all',this)">Tous</div>
+  <div class="fchip fN" onclick="setFilter('Nutrition',this)">🥗 Nutrition</div>
+  <div class="fchip fD" onclick="setFilter('Diabète',this)">🩸 Diabète</div>
+  <div class="fchip fP" onclick="setFilter('Parkinson',this)">🧠 Parkinson</div>
+  <div class="fchip" onclick="setFilter('Consommable',this)">💊 Consommable</div>
+  <div class="fchip" onclick="setFilter('Locatif',this)">🛏 Locatif</div>
+  <div class="fchip" onclick="setFilter('enrichi',this)">✅ Avec GTIN</div>
+  <div class="fchip" onclick="setFilter('sans_gtin',this)">⚠️ Sans GTIN</div>
+</div>
+
+<div class="content">
+  <div id="configWarning" style="display:none">
+    <div class="config-warning">⚠️ CONFIGURATION REQUISE<br>Remplacez https://kybdqgrikfevstkwzaqe.supabase.co et eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt5YmRxZ3Jpa2ZldnN0a3d6YXFlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY3Njk4MDYsImV4cCI6MjA5MjM0NTgwNn0.RMj4J4MbE6-vS8VMtb3vpAfPwCgmvIWPQuqrWOF-Rws dans ce fichier.</div>
+  </div>
+  <div id="statsBar" style="font-size:.72rem;color:var(--muted);padding:0 0 10px;display:flex;gap:12px"></div>
+  <div id="articleList"><div class="loading"><div class="spinner"></div>Chargement depuis Supabase…</div></div>
+</div>
+
+<div class="export-bar">
+  <button class="exp-btn exp-p" onclick="exportExcel()">⬇️ Export Excel</button>
+  <button class="exp-btn exp-t" onclick="exportPivotJSON()">🔑 Export GTIN pivot</button>
+</div>
+
+<script>
+// ── CONFIG ────────────────────────────────────────────────────────────────────
+const SUPABASE_URL = 'https://kybdqgrikfevstkwzaqe.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt5YmRxZ3Jpa2ZldnN0a3d6YXFlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY3Njk4MDYsImV4cCI6MjA5MjM0NTgwNn0.RMj4J4MbE6-vS8VMtb3vpAfPwCgmvIWPQuqrWOF-Rws'; // clé anon — lecture seule
+
+const AI_DEFS = {"01": {"l": "GTIN-14", "d": "Identifiant article mondial", "len": 14, "fixed": true}, "10": {"l": "N° Lot", "d": "Numéro de lot fabrication", "len": 0, "fixed": false}, "11": {"l": "Date fabrication", "d": "AAMMJJ", "len": 6, "fixed": true}, "15": {"l": "Date limite DLUO", "d": "AAMMJJ", "len": 6, "fixed": true}, "17": {"l": "Date expiration DLC", "d": "AAMMJJ", "len": 6, "fixed": true}, "20": {"l": "Variante", "d": "2 chiffres", "len": 2, "fixed": true}, "21": {"l": "N° Série", "d": "Numéro de série individuel", "len": 0, "fixed": false}, "30": {"l": "Quantité", "d": "Quantité dans emballage", "len": 8, "fixed": false}, "37": {"l": "Qté UV", "d": "Unités de vente", "len": 8, "fixed": false}, "240": {"l": "Réf. fabricant", "d": "Référence fabricant", "len": 0, "fixed": false}, "711": {"l": "CIP/ACL France", "d": "Code remboursement FR", "len": 0, "fixed": false}};
+const TRACE_AI = {"AUCUNE": [], "EAN SIMPLE": ["01"], "LOT": ["01", "10"], "LOT+DLC": ["01", "17", "10"], "SÉRIE": ["01", "21"], "SÉRIE+LOT": ["01", "10", "21"], "SÉRIE+LOT+DLC": ["01", "17", "10", "21"]};
+
+// ── SUPABASE CLIENT (read-only) ───────────────────────────────────────────────
+const sb = {
+  async get(table, qs='') {
+    const r=await fetch(`${SUPABASE_URL}/rest/v1/${table}?${qs}`,{headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}});
+    if(!r.ok) throw new Error(await r.text());
+    return r.json();
+  }
+};
+
+// ── STATE ─────────────────────────────────────────────────────────────────────
+let allArticles = [];
+let activeFilter = 'all';
+let searchQ = '';
+let expandedId = null;
+
+// ── INIT ──────────────────────────────────────────────────────────────────────
+window.addEventListener('load', () => {
+  if(SUPABASE_URL === 'https://kybdqgrikfevstkwzaqe.supabase.co') {
+    document.getElementById('configWarning').style.display='block';
+    document.getElementById('articleList').innerHTML='';
+    return;
+  }
+  loadAll();
+});
+
+async function loadAll() {
+  try {
+    const data = await sb.get('articles_consultation',
+      'select=*&order=categorie,designation&limit=500');
+    allArticles = data;
+    renderStats();
+    renderList();
+  } catch(e) {
+    document.getElementById('articleList').innerHTML=`<div style="color:var(--red);padding:20px;font-size:.8rem">❌ Erreur connexion Supabase: ${e.message}</div>`;
+  }
+}
+
+function renderStats() {
+  const total=allArticles.length;
+  const enrichi=allArticles.filter(a=>a.gtin14_master).length;
+  const sans=total-enrichi;
+  document.getElementById('statsBar').innerHTML=`
+    <span><b>${total}</b> articles</span>
+    <span style="color:var(--teal)"><b>${enrichi}</b> avec GTIN</span>
+    ${sans>0?`<span style="color:var(--orange)"><b>${sans}</b> à enrichir</span>`:''}`;
+}
+
+function filterArticles(q) { searchQ=q.toLowerCase(); renderList(); }
+function setFilter(f,el) {
+  activeFilter=f;
+  document.querySelectorAll('.fchip').forEach(c=>c.classList.remove('on'));
+  el.classList.add('on');
+  renderList();
+}
+
+function renderList() {
+  const list = document.getElementById('articleList');
+  let items = allArticles;
+
+  // Filter
+  if(activeFilter==='enrichi') items=items.filter(a=>a.gtin14_master);
+  else if(activeFilter==='sans_gtin') items=items.filter(a=>!a.gtin14_master);
+  else if(activeFilter!=='all') items=items.filter(a=>a.categorie===activeFilter||a.type_article===activeFilter);
+
+  // Search
+  if(searchQ.length>=2) items=items.filter(a=>
+    (a.ref_q2||'').toLowerCase().includes(searchQ)||
+    (a.designation||'').toLowerCase().includes(searchQ)||
+    (a.gtin14_master||'').includes(searchQ)||
+    (a.ean_master||'').includes(searchQ)||
+    (a.fournisseur||'').toLowerCase().includes(searchQ));
+
+  if(!items.length) { list.innerHTML='<div class="empty-state"><div class="big">🔍</div>Aucun article trouvé</div>'; return; }
+
+  const catIcon={Nutrition:'🥗',Diabète:'🩸',Parkinson:'🧠'};
+  const catCls={Nutrition:'tN',Diabète:'tD',Parkinson:'tP'};
+  const typCls={Consommable:'tC',Locatif:'tL'};
+  const statCls={ACTIF:'tOK','EN COURS':'tEN',ARRET:'tAR'};
+
+  list.innerHTML = items.map(a => {
+    const isExp = expandedId===a.id;
+    const aiArr = TRACE_AI[a.mode_tracabilite||'']||[];
+    return `
+    <div class="art-card" id="card_${a.id}">
+      <div class="art-card-head" onclick="toggleDetail('${a.id}')">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start">
+          <div>
+            <div class="art-ref">${a.ref_q2}</div>
+            <div class="art-des">${a.designation||'—'}</div>
+          </div>
+          ${a.prix_achat?`<div class="price-badge">${parseFloat(a.prix_achat).toFixed(2)} €</div>`:''}
+        </div>
+        <div class="art-meta">
+          ${a.categorie?`<span class="tag ${catCls[a.categorie]||''}">${catIcon[a.categorie]||''} ${a.categorie}</span>`:''}
+          ${a.type_article?`<span class="tag ${typCls[a.type_article]||''}">${a.type_article}</span>`:''}
+          ${a.statut?`<span class="tag ${statCls[a.statut]||''}">${a.statut}</span>`:''}
+          ${a.mode_tracabilite?`<span style="font-size:.62rem;color:var(--muted)">${a.mode_tracabilite}</span>`:''}
+          ${aiArr.map(ai=>`<span class="ai-pill">(${ai})</span>`).join('')}
+        </div>
+      </div>
+      ${a.gtin14_master?`<div class="gtin-row">GTIN: ${a.gtin14_master} ${a.ean_master?'| EAN: '+a.ean_master:''}</div>`:''}
+      <div class="art-detail ${isExp?'open':''}" id="detail_${a.id}">
+        ${renderDetail(a)}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function toggleDetail(id) {
+  expandedId = expandedId===id ? null : id;
+  const d=document.getElementById('detail_'+id);
+  if(d) d.classList.toggle('open', expandedId===id);
+}
+
+function renderDetail(a) {
+  const row=(l,v)=>`<div class="dl-row"><span class="dl-label">${l}</span><span class="dl-val${!v?' empty':''}">${v||'—'}</span></div>`;
+  let html='';
+
+  // Codes
+  html+=`<div class="dl-sec"><h4>Codes-barres</h4>
+    ${row('GTIN-14 Master',a.gtin14_master)}
+    ${row('EAN-13 Master',a.ean_master)}
+    ${row('UDI Master',a.udi_master)}
+    ${row('GTIN-14 S-Cond',a.gtin14_sous_cond)}
+    ${row('GTIN-14 Unité',a.gtin14_unite)}
+    ${row('DLC (AAMMJJ)',a.ai17_date_exp)}
+    ${row('Lot',a.ai10_lot)}
+    ${row('Série',a.ai21_serie)}
+  </div>`;
+
+  // Cond
+  html+=`<div class="dl-sec"><h4>Conditionnements</h4>
+    ${row('UV par Master',a.qte_master)}
+    ${row('UV par S-Cond',a.qte_sous_cond)}
+    ${row('Mini expédition',a.qte_mini_expedition)}
+  </div>`;
+
+  // Dims
+  if(a.longueur_master||a.largeur_master||a.hauteur_master) {
+    html+=`<div class="dl-sec"><h4>Dimensions Master</h4>
+      ${row('L×l×H (mm)',`${a.longueur_master||'—'}×${a.largeur_master||'—'}×${a.hauteur_master||'—'}`)}
+      ${row('Poids (kg)',a.poids_master)}
+    </div>`;
+  }
+
+  // Photos
+  const photos=[['colis','photo_colis_url','📦'],['etiq','photo_etiq_master_url','🏷️'],['sc','photo_etiq_sc_url','📋'],['art','photo_article_url','💊']];
+  const hasPhotos=photos.some(([,field])=>a[field]);
+  if(hasPhotos) {
+    html+=`<div class="dl-sec"><h4>Photos</h4><div class="photo-row">`;
+    photos.forEach(([key,field,icon])=>{
+      html+=`<div class="photo-thumb">`;
+      if(a[field]) html+=`<img src="${a[field]}" onclick="window.open('${a[field]}','_blank')" alt="${key}">`;
+      else html+=`<div class="ph-lbl">${icon}<br>${key}</div>`;
+      html+=`</div>`;
+    });
+    html+=`</div></div>`;
+  }
+
+  // PDFs
+  const pdfs=[['Notice','pdf_notice_url'],['Certificat','pdf_cert_url'],['Autre','pdf_autre_url']];
+  const hasPdfs=pdfs.some(([,f])=>a[f]);
+  if(hasPdfs) {
+    html+=`<div class="dl-sec"><h4>Documents</h4>`;
+    pdfs.forEach(([lbl,field])=>{if(a[field]) html+=`<div style="margin-bottom:6px"><a href="${a[field]}" target="_blank" style="color:var(--blue);font-size:.78rem;font-weight:600">📄 ${lbl}</a></div>`;});
+    html+=`</div>`;
+  }
+
+  if(a.notes) html+=`<div class="dl-sec"><h4>Notes</h4><div style="font-size:.78rem;line-height:1.5;color:var(--text)">${a.notes}</div></div>`;
+
+  // URL article
+  html+=`<div style="margin-top:10px;padding:10px;background:#f0f4f8;border-radius:8px;font-size:.68rem;color:var(--muted)">🔗 Réf. unique : <code style="font-family:'JetBrains Mono',monospace;color:var(--navy)">${a.ref_q2}</code></div>`;
+
+  return html;
+}
+
+// ── EXPORTS ───────────────────────────────────────────────────────────────────
+async function exportExcel() {
+  await loadScript('https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js');
+  const items = getFilteredItems();
+  const headers=['Réf Q2','Désignation','Statut','Catégorie','Type','Fournisseur','Prix HT €',
+    'Mode traçabilité','Classe DM','FEFO','GTIN-14 Master','EAN-13 Master','GTIN S-Cond','GTIN Unité',
+    'DLC','Lot','Série','UV/Master','UV/S-Cond','Mini expéd.','L(mm)','l(mm)','H(mm)','Poids(kg)',
+    'Photo colis','Photo étiq. master','PDF Notice'];
+  const rows=items.map(a=>[a.ref_q2,a.designation,a.statut,a.categorie,a.type_article,a.fournisseur,a.prix_achat,
+    a.mode_tracabilite,a.classe_dm,a.fefo?'Oui':'Non',
+    "'"+( a.gtin14_master||''),"'"+( a.ean_master||''),"'"+( a.gtin14_sous_cond||''),"'"+( a.gtin14_unite||''),
+    a.ai17_date_exp,a.ai10_lot,a.ai21_serie,a.qte_master,a.qte_sous_cond,a.qte_mini_expedition,
+    a.longueur_master,a.largeur_master,a.hauteur_master,a.poids_master,
+    a.photo_colis_url,a.photo_etiq_master_url,a.pdf_notice_url]);
+  const wb=XLSX.utils.book_new();
+  const ws=XLSX.utils.aoa_to_sheet([headers,...rows]);
+  ws['!cols']=headers.map(h=>{return{wch:Math.max(h.length+2,14)}});
+  XLSX.utils.book_append_sheet(wb,ws,'Référentiel');
+  XLSX.writeFile(wb,'IdCare_Referentiel_'+new Date().toISOString().slice(0,10)+'.xlsx');
+}
+
+async function exportPivotJSON() {
+  try {
+    const data=await sb.get('gtin_pivot','select=*&order=ref_q2');
+    const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a'); a.href=url; a.download='IdCare_GTIN_pivot.json';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
+  } catch(e) { alert('Erreur export: '+e.message); }
+}
+
+function getFilteredItems() {
+  let items=allArticles;
+  if(activeFilter==='enrichi') items=items.filter(a=>a.gtin14_master);
+  else if(activeFilter==='sans_gtin') items=items.filter(a=>!a.gtin14_master);
+  else if(activeFilter!=='all') items=items.filter(a=>a.categorie===activeFilter||a.type_article===activeFilter);
+  if(searchQ.length>=2) items=items.filter(a=>(a.ref_q2||'').toLowerCase().includes(searchQ)||(a.designation||'').toLowerCase().includes(searchQ));
+  return items;
+}
+
+function loadScript(src) {
+  return new Promise((res,rej)=>{
+    if(document.querySelector(`script[src="${src}"]`)){res();return;}
+    const s=document.createElement('script'); s.src=src; s.onload=res; s.onerror=rej; document.head.appendChild(s);
+  });
+}
+</script>
+</body>
+</html>
