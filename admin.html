@@ -139,9 +139,9 @@ select.fi{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
     et remplacez les valeurs suivantes :<br><br>
     https://kybdqgrikfevstkwzaqe.supabase.co<br>
     → Ex: https://abcxyz.supabase.co<br><br>
-    eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt5YmRxZ3Jpa2ZldnN0a3d6YXFlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY3Njk4MDYsImV4cCI6MjA5MjM0NTgwNn0.RMj4J4MbE6-vS8VMtb3vpAfPwCgmvIWPQuqrWOF-Rws<br>
+    &lt;votre-clé-supabase&gt;<br>
     → Supabase > Settings > API > anon key<br><br>
-    eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt5YmRxZ3Jpa2ZldnN0a3d6YXFlIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3Njc2OTgwNiwiZXhwIjoyMDkyMzQ1ODA2fQ.-zElgn9n3vTi7O7tjWm_qchQim3c_5Ra5cmm8prix8o<br>
+    &lt;votre-clé-supabase&gt;&lt;votre-clé-service-role&gt;<br>
     → Supabase > Settings > API > service_role key
   </div>
 </div>
@@ -349,8 +349,8 @@ select.fi{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
 
 <script>
 // ── CONFIG ────────────────────────────────────────────────────────────────────
-const SUPABASE_URL = 'https://kybdqgrikfevstkwzaqe.supabase.co';
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt5YmRxZ3Jpa2ZldnN0a3d6YXFlIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3Njc2OTgwNiwiZXhwIjoyMDkyMzQ1ODA2fQ.-zElgn9n3vTi7O7tjWm_qchQim3c_5Ra5cmm8prix8o'; // service_role key pour l'acquisition
+const SUPABASE_URL = localStorage.getItem('sb_url') || '';
+const SUPABASE_KEY = localStorage.getItem('sb_service') || '';
 
 const AI_DEFS = {"01": {"l": "GTIN-14", "d": "Identifiant article mondial", "len": 14, "fixed": true}, "10": {"l": "N° Lot", "d": "Numéro de lot fabrication", "len": 0, "fixed": false}, "11": {"l": "Date fabrication", "d": "AAMMJJ", "len": 6, "fixed": true}, "15": {"l": "Date limite DLUO", "d": "AAMMJJ", "len": 6, "fixed": true}, "17": {"l": "Date expiration DLC", "d": "AAMMJJ", "len": 6, "fixed": true}, "20": {"l": "Variante", "d": "2 chiffres", "len": 2, "fixed": true}, "21": {"l": "N° Série", "d": "Numéro de série individuel", "len": 0, "fixed": false}, "30": {"l": "Quantité", "d": "Quantité dans emballage", "len": 8, "fixed": false}, "37": {"l": "Qté UV", "d": "Unités de vente", "len": 8, "fixed": false}, "240": {"l": "Réf. fabricant", "d": "Référence fabricant", "len": 0, "fixed": false}, "711": {"l": "CIP/ACL France", "d": "Code remboursement FR", "len": 0, "fixed": false}};
 const TRACE_AI = {"AUCUNE": [], "EAN SIMPLE": ["01"], "LOT": ["01", "10"], "LOT+DLC": ["01", "17", "10"], "SÉRIE": ["01", "21"], "SÉRIE+LOT": ["01", "10", "21"], "SÉRIE+LOT+DLC": ["01", "17", "10", "21"]};
@@ -402,8 +402,9 @@ function freshState() {
 
 // ── INIT ──────────────────────────────────────────────────────────────────────
 window.addEventListener('load', () => {
-  if(SUPABASE_URL === 'NON_CONFIGURE') {
+  if(!SUPABASE_URL || !SUPABASE_KEY) {
     document.getElementById('configWarning').style.display='block';
+    setTimeout(()=>{ window.location.href='config.html'; }, 2000);
     return;
   }
   renderNav();
