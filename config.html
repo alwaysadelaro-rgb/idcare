@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ID-CARE — Configuration</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:system-ui,sans-serif;background:#F0F4F8;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
+.card{background:#fff;border-radius:14px;padding:32px;max-width:520px;width:100%;box-shadow:0 4px 24px rgba(0,0,0,.10)}
+h1{font-size:1.1rem;font-weight:700;color:#1F3864;margin-bottom:6px}
+.sub{font-size:.78rem;color:#6B7A8D;margin-bottom:24px;line-height:1.5}
+label{display:block;font-size:.72rem;font-weight:600;color:#1F3864;margin-bottom:5px}
+input{width:100%;padding:10px 12px;border:1.5px solid #D1D9E0;border-radius:8px;font-size:.8rem;font-family:monospace;margin-bottom:16px;outline:none}
+input:focus{border-color:#2E75B6;box-shadow:0 0 0 3px rgba(46,117,182,.12)}
+.btn{width:100%;padding:12px;background:#17A589;color:#fff;border:none;border-radius:10px;font-size:.88rem;font-weight:700;cursor:pointer;font-family:system-ui,sans-serif}
+.btn:hover{background:#148f77}
+.status{margin-top:12px;padding:10px;border-radius:8px;font-size:.78rem;display:none;text-align:center}
+.ok{background:#E8F8F5;color:#1E8449}.err{background:#FADBD8;color:#C0392B}
+.links{margin-top:20px;display:flex;gap:10px}
+.link{flex:1;padding:10px;border-radius:8px;border:1.5px solid #D1D9E0;text-align:center;font-size:.78rem;font-weight:600;text-decoration:none;color:#1F3864}
+.link:hover{background:#F0F4F8}
+.warn{background:#FEF9E7;border-left:4px solid #E67E22;padding:10px 14px;border-radius:6px;font-size:.75rem;color:#856404;margin-bottom:20px;line-height:1.5}
+</style>
+</head>
+<body>
+<div class="card">
+  <h1>⚙️ Configuration ID-CARE</h1>
+  <p class="sub">Les clés sont sauvegardées dans votre navigateur uniquement.<br>Elles ne transitent jamais par GitHub ni par aucun serveur.</p>
+  <div class="warn">⚠️ Cette page est à usage interne uniquement. Ne partagez pas les clés Supabase.</div>
+  <label>URL Supabase</label>
+  <input id="sb_url" type="text" placeholder="https://xxxx.supabase.co" spellcheck="false">
+  <label>Clé ANON — consultation (lecture seule)</label>
+  <input id="sb_anon" type="text" placeholder="eyJhbGci..." spellcheck="false">
+  <label>Clé SERVICE ROLE — acquisition (écriture)</label>
+  <input id="sb_service" type="password" placeholder="eyJhbGci..." spellcheck="false">
+  <button class="btn" onclick="save()">💾 Enregistrer la configuration</button>
+  <div class="status" id="status"></div>
+  <div class="links">
+    <a class="link" href="index.html">🔍 Consultation</a>
+    <a class="link" href="admin.html">✏️ Acquisition</a>
+  </div>
+</div>
+<script>
+// Pré-remplir depuis localStorage
+window.onload = () => {
+  document.getElementById('sb_url').value    = localStorage.getItem('sb_url') || '';
+  document.getElementById('sb_anon').value   = localStorage.getItem('sb_anon') || '';
+  document.getElementById('sb_service').value = localStorage.getItem('sb_service') || '';
+};
+
+function save() {
+  const url     = document.getElementById('sb_url').value.trim();
+  const anon    = document.getElementById('sb_anon').value.trim();
+  const service = document.getElementById('sb_service').value.trim();
+  if(!url || !anon || !service) {
+    show('Veuillez remplir tous les champs.', false); return;
+  }
+  localStorage.setItem('sb_url', url);
+  localStorage.setItem('sb_anon', anon);
+  localStorage.setItem('sb_service', service);
+  // index.html lit sb_anon, admin.html lit sb_service
+  localStorage.setItem('sb_key', anon);      // pour index.html
+  // admin.html utilisera sb_service directement
+  show('✅ Configuration sauvegardée ! Vous pouvez utiliser les applications.', true);
+}
+
+function show(msg, ok) {
+  const el = document.getElementById('status');
+  el.textContent = msg;
+  el.className = 'status ' + (ok ? 'ok' : 'err');
+  el.style.display = 'block';
+}
+</script>
+</body>
+</html>
