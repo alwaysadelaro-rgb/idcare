@@ -2,6 +2,9 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <title>ID-CARE — Acquisition Articles</title>
@@ -275,17 +278,27 @@ select.fi{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
 
   <!-- SOUS-COND -->
   <div class="card">
-    <div class="ct"><div class="dot" style="background:var(--orange);opacity:.6"></div>SOUS-CONDITIONNEMENT <span class="opt">(optionnel)</span></div>
+    <div class="ct" style="cursor:pointer" onclick="toggleSection('SC')">
+      <div class="dot" style="background:var(--orange);opacity:.6"></div>SOUS-CONDITIONNEMENT <span class="opt">(optionnel)</span>
+      <span id="toggleSC" style="margin-left:auto">▼ afficher</span>
+    </div>
+    <div id="bodySC" style="display:none">
     <div class="scan-zone" style="border-color:#b2dfdb"><div class="szh"><span class="szl" style="color:#0e9e88">Scans S-Cond</span><span class="sz-add" onclick="addScan('sc')">+ scan</span></div><div id="scansSC"></div></div>
     <div class="parsed-box" id="parsedSC"><div class="ph" style="background:#0e9e88">Résultat S-Cond</div><div id="parsedSCRows"></div></div>
   </div>
 
   <!-- UNITÉ -->
   <div class="card">
-    <div class="ct"><div class="dot" style="background:var(--orange);opacity:.35"></div>UNITÉ <span class="opt">(optionnel)</span></div>
+    <div class="ct" style="cursor:pointer" onclick="toggleSection('Unit')">
+      <div class="dot" style="background:var(--orange);opacity:.35"></div>UNITÉ <span class="opt">(optionnel)</span>
+      <span id="toggleUnit" style="margin-left:auto">▼ afficher</span>
+    </div>
+    <div id="bodyUnit" style="display:none">
     <div class="scan-zone" style="border-color:#b2dfdb"><div class="szh"><span class="szl" style="color:#0e9e88">Scans unité</span><span class="sz-add" onclick="addScan('unit')">+ scan</span></div><div id="scansUnit"></div></div>
     <div class="parsed-box" id="parsedUnit"><div class="ph" style="background:#0e9e88">Résultat Unité</div><div id="parsedUnitRows"></div></div>
+    </div><!-- /bodyUnit -->
   </div>
+    </div><!-- /bodyUnit -->
 </div>
 
 <!-- ═══ S4: COND + DIMS + PHOTOS ═══ -->
@@ -394,7 +407,6 @@ function freshState() {
   return {
     id:null, ref_q2:'', designation:'', statut:'ACTIF', categorie:'',
     type_article:'', fournisseur:'', prix_achat:null,
-    mode_tracabilite:'LOT+DLC', classe_dm:'', fefo:false,
     parsed:{master:{},sc:{},unit:{}},
     photos:{}, dirty:false
   };
@@ -764,9 +776,7 @@ async function saveArticle() {
     type_article: S.type_article,
     fournisseur: gv('fFou').trim(),
     prix_achat: parseFloat(gv('fPrix'))||null,
-    mode_tracabilite: S.mode_tracabilite,
     classe_dm: S.classe_dm||'',
-    fefo: S.fefo,
     gtin14_master: pm['01']||'',
     ai_01: !!(pm['01']),
     ai_10: !!(pm['10']),
@@ -824,6 +834,15 @@ function toast(msg,type='info') {
   t.textContent=msg; t.style.background=colors[type]||colors.info;
   t.classList.add('vis'); clearTimeout(t._timer);
   t._timer=setTimeout(()=>t.classList.remove('vis'),3000);
+}
+
+function toggleSection(sec) {
+  const body = document.getElementById('body'+sec);
+  const icon = document.getElementById('toggle'+sec);
+  if (!body) return;
+  const open = body.style.display !== 'none';
+  body.style.display = open ? 'none' : 'block';
+  if (icon) icon.textContent = open ? '▼' : '▲';
 }
 </script>
 </body>
