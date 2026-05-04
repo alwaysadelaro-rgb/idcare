@@ -377,17 +377,21 @@ const sb = {
     if(!r.ok) throw new Error(await r.text());
     return r.json();
   },
-  async upsert(table, data) {
-    const r = await fetch(`${SUPABASE_URL}/rest/v1/${table}`, {
+  async upsert(table, data, conflictCol='ref_q2') {
+    const url = `${SUPABASE_URL}/rest/v1/${table}?on_conflict=${conflictCol}`;
+    const r = await fetch(url, {
       method: 'POST',
       body: JSON.stringify(data),
       headers: {
-        ...this.headers(),
+        'apikey': SUPABASE_KEY,
+        'Authorization': 'Bearer ' + SUPABASE_KEY,
+        'Content-Type': 'application/json',
         'Prefer': 'resolution=merge-duplicates,return=representation'
       }
     });
-    if(!r.ok) throw new Error(await r.text());
-    return r.json();
+    if(!r.ok) { const e=await r.text(); throw new Error(e); }
+    const txt = await r.text();
+    return txt ? JSON.parse(txt) : {};
   },
   async upload(bucket, path, file) {
     const r = await fetch(`${SUPABASE_URL}/storage/v1/object/${bucket}/${path}`, {
@@ -515,24 +519,114 @@ async function loadArticle(ref) {
     if(!data.length) return;
     const a = data[0];
     S = { ...freshState(), ...a, dirty:false };
-    // Fill form
-    sv('fRef',a.ref_q2||''); sv('fDes',a.designation||'');
-    sv('fFou',a.fournisseur||''); sv('fPrix',a.prix_achat||'');
-    sv('fStatut',a.statut||'ACTIF');
-    sv('qM',a.qte_master||1); sv('qSC',a.qte_sous_cond||0); sv('qExp',a.qte_mini_expedition||1);
-    sv('dL',a.longueur_master||''); sv('dW',a.largeur_master||'');
-    sv('dH',a.hauteur_master||''); sv('dP',a.poids_master||'');
-    // Chips
+
+    // ── Identification ──────────────────────────────────────────────────────
+    sv('fRef', a.ref_q2||'');
+    sv('fDes', a.designation||'');
+    sv('fFou', a.fournisseur||'');
+    sv('fPrix', a.prix_achat||'');
+    sv('fStatut', a.statut||'ACTIF');
+
+    // ── Classification chips ─────────────────────────────────────────────────
     restoreChips(a);
-    // Photos
-    ['colis','etiq','sc','art'].forEach(k=>{
-      const urlField={colis:'photo_colis_url',etiq:'photo_etiq_master_url',sc:'photo_etiq_sc_url',art:'photo_article_url'}[k];
-      if(a[urlField]){ const slot=document.getElementById('ps-'+k); if(slot){ slot.classList.add('has'); let img=slot.querySelector('img');if(!img){img=document.createElement('img');slot.appendChild(img);} img.src=a[urlField]; } }
+
+    // ── Codes existants → remplir les champs de scan ─────────────────────────
+    const fillScanLevel = (level, code1, code2) => {
+      if (!code1 && !code2) return;
+      const capMap = {master:'Master', sc:'SC', unit:'Unit'};
+      const Cap = capMap[level];
+      // S'assurer que les champs existent (forcer init)
+      const container = document.getElementById('scans'+Cap);
+      if (!container) return;
+      // Vider les champs existants
+      container.innerHTML = '';
+      scanCounts[level] = 0;
+      if (code1) {
+        addScan(level);
+        const inp1 = document.getElementById(`si_${level}_1`);
+        if (inp1) { inp1.value = code1; onScanInput(level); }
+      }
+      if (code2) {
+        addScan(level);
+        const inp2 = document.getElementById(`si_${level}_2`);
+        if (inp2) { inp2.value = code2; onScanInput(level); }
+      }
+    };
+
+    fillScanLevel('master', a.code_m1||'', a.code_m2||'');
+    // SC et Unit : ouvrir le toggle si des données existent
+    if (a.code_sc1 || a.gtin14_sc) {
+      toggleSection('SC');
+      setTimeout(()=>fillScanLevel('sc', a.code_sc1||'', ''), 50);
+    }
+    if (a.code_u1 || a.gtin14_unite) {
+      toggleSection('Unit');
+      setTimeout(()=>fillScanLevel('unit', a.code_u1||'', ''), 50);
+    }
+
+    // ── GTIN directs (si pas de code brut mais GTIN connu) ───────────────────
+    if (a.gtin14_master && !a.code_m1) sv('fGtinM', a.gtin14_master);
+
+    // ── AI booléens → cocher les cases ───────────────────────────────────────
+    const aiFields = ['ai_00','ai_01','ai_02','ai_03','ai_10','ai_11','ai_12',
+                      'ai_13','ai_15','ai_16','ai_17','ai_20','ai_21','ai_22',
+                      'ai_30','ai_37'];
+    aiFields.forEach(ai => {
+      if (a[ai]) {
+        const colName = ai.replace('ai_','AI(').replace(/^AI\(0*(\d+)/, 'AI($1') + ')';
+        const cell = document.querySelector(`[data-ai="${ai}"]`);
+        if (cell) cell.classList.add('checked');
+      }
     });
+
+    // ── Conditionnements ──────────────────────────────────────────────────────
+    sv('qM',  a.qte_master       || 1);
+    sv('qSC', a.qte_sous_cond    || 0);
+    sv('qExp',a.qte_mini_expedition || 1);
+
+    // ── Dimensions ───────────────────────────────────────────────────────────
+    sv('dL', a.longueur_master||'');
+    sv('dW', a.largeur_master||'');
+    sv('dH', a.hauteur_master||'');
+    sv('dP', a.poids_master||'');
+
+    // ── Photos existantes ─────────────────────────────────────────────────────
+    const photoMap = {
+      colis:  'photo_colis_url',
+      etiq:   'photo_etiq_m_url',
+      sc:     'photo_etiq_sc_url',
+      art:    'photo_article_url'
+    };
+    Object.entries(photoMap).forEach(([k, field]) => {
+      if (a[field]) {
+        const slot = document.getElementById('ps-'+k);
+        if (slot) {
+          slot.classList.add('has');
+          let img = slot.querySelector('img');
+          if (!img) { img = document.createElement('img'); slot.appendChild(img); }
+          img.src = a[field];
+        }
+        S[field] = a[field];
+      }
+    });
+
+    // ── Notice PDF ────────────────────────────────────────────────────────────
+    if (a.pdf_notice_url) {
+      const noticeDiv = document.getElementById('noticeLink');
+      if (noticeDiv) {
+        noticeDiv.innerHTML = `<a href="${a.pdf_notice_url}" target="_blank" 
+          style="color:var(--teal);font-size:.78rem;font-weight:600;display:block;margin-top:6px">
+          📄 Notice fabricant disponible</a>`;
+      }
+    }
+
     step=1; showStep();
     showArtBanner(a);
-    toast('Article chargé : '+a.ref_q2,'ok');
-  } catch(e) { toast('Erreur chargement','err'); }
+    toast('✅ Article chargé : '+a.ref_q2, 'ok');
+  } catch(e) {
+    console.error(e);
+    toast('Erreur chargement : '+e.message, 'err');
+  }
 }
 
 async function doSearch(q) {
