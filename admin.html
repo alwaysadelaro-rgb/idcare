@@ -334,9 +334,18 @@ select.fi{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
     <div class="alert at">📸 <span>Les photos sont uploadées directement dans Supabase Storage. URL permanente générée automatiquement.</span></div>
     <div class="pgrid">
       <div class="pslot" id="ps-colis" onclick="document.getElementById('pf-colis').click()"><div class="psi">📦</div><div class="psl">Colis Master</div><div class="pov">✏️</div><input type="file" id="pf-colis" accept="image/*" capture="environment" onchange="handlePhoto(this,'colis','photo_colis_url')"></div>
-      <div class="pslot" id="ps-etiq" onclick="document.getElementById('pf-etiq').click()"><div class="psi">🏷️</div><div class="psl">Étiquette Master</div><div class="pov">✏️</div><input type="file" id="pf-etiq" accept="image/*" capture="environment" onchange="handlePhoto(this,'etiq','photo_etiq_master_url')"></div>
+      <div class="pslot" id="ps-etiq" onclick="document.getElementById('pf-etiq').click()"><div class="psi">🏷️</div><div class="psl">Étiq. Master</div><div class="pov">✏️</div><input type="file" id="pf-etiq" accept="image/*" capture="environment" onchange="handlePhoto(this,'etiq','photo_etiq_m_url')"></div>
       <div class="pslot" id="ps-sc" onclick="document.getElementById('pf-sc').click()"><div class="psi">📋</div><div class="psl">Étiq. S-Cond</div><div class="pov">✏️</div><input type="file" id="pf-sc" accept="image/*" capture="environment" onchange="handlePhoto(this,'sc','photo_etiq_sc_url')"></div>
-      <div class="pslot" id="ps-art" onclick="document.getElementById('pf-art').click()"><div class="psi">💊</div><div class="psl">Article</div><div class="pov">✏️</div><input type="file" id="pf-art" accept="image/*" capture="environment" onchange="handlePhoto(this,'art','photo_article_url')"></div>
+      <div class="pslot" id="ps-art" onclick="document.getElementById('pf-art').click()"><div class="psi">💊</div><div class="psl">Article / Unité</div><div class="pov">✏️</div><input type="file" id="pf-art" accept="image/*" capture="environment" onchange="handlePhoto(this,'art','photo_article_url')"></div>
+    </div>
+    <div style="margin-top:12px">
+      <div class="ct" style="margin-bottom:8px"><div class="dot" style="background:var(--purple)"></div>Notice / PDF fabricant</div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <input class="fi" type="url" id="fNoticeUrl" placeholder="URL de la notice (PDF ou lien web)" style="flex:1" oninput="S.pdf_notice_url=this.value;S.dirty=true">
+        <button onclick="document.getElementById('pf-notice').click()" style="padding:9px 12px;background:var(--purple);color:#fff;border:none;border-radius:8px;font-size:.78rem;font-weight:700;cursor:pointer;white-space:nowrap;-webkit-appearance:none">📎 Importer</button>
+        <input type="file" id="pf-notice" accept=".pdf,image/*" style="display:none" onchange="handlePhoto(this,'notice','pdf_notice_url')">
+      </div>
+      <div id="noticeLink" style="margin-top:6px"></div>
     </div>
   </div>
 </div>
@@ -612,6 +621,8 @@ async function loadArticle(ref) {
 
     // ── Notice PDF ────────────────────────────────────────────────────────────
     if (a.pdf_notice_url) {
+      sv('fNoticeUrl', a.pdf_notice_url);
+      S.pdf_notice_url = a.pdf_notice_url;
       const noticeDiv = document.getElementById('noticeLink');
       if (noticeDiv) {
         noticeDiv.innerHTML = `<a href="${a.pdf_notice_url}" target="_blank" 
@@ -761,7 +772,15 @@ function parseUDI(raw) {
   const d=raw.replace(/\D/g,''); if(d.length===13){ R._type='EAN-13'; R['01']='0'+d; return R; } if(d.length===14){ R._type='GTIN-14'; R['01']=d; return R; }
   R._type='INCONNU'; return R;
 }
-function ean13(p){ const g=p['01']; if(!g) return ''; if(g.length===14&&g[0]==='0') return g.slice(1); return g.length===13?g:''; }
+function ean13(p){
+  const g = p['01'];
+  if (!g) return '';
+  const gs = String(g).replace(/'/g,'').trim(); // supprimer apostrophes résiduelles
+  if (gs.length===14 && gs[0]==='0') return gs.slice(1);
+  if (gs.length===13) return gs;
+  if (gs.length===12) return '0'+gs; // UPC-A
+  return '';
+}
 function fmtDate(r){ if(!r||r.length<6) return r||''; return '20'+r.slice(0,2)+'/'+r.slice(2,4)+'/'+r.slice(4,6); }
 function dlcClose(r){ try{ const y=2000+parseInt(r.slice(0,2)),mo=parseInt(r.slice(2,4))-1,d=parseInt(r.slice(4,6)); return (new Date(y,mo,d)-Date.now())<86400000*180; }catch(e){return false;} }
 
@@ -786,6 +805,7 @@ async function handlePhoto(input,slotKey,dbField) {
   if(!input.files[0]) return;
   const file=input.files[0], ref=gv('fRef')||'unknown';
   const slot=document.getElementById('ps-'+slotKey);
+  if(!slot && slotKey!=='notice') return;
   // Preview
   const reader=new FileReader();
   reader.onload=e=>{ slot.classList.add('has'); let img=slot.querySelector('img'); if(!img){img=document.createElement('img');slot.appendChild(img);} img.src=e.target.result; };
@@ -868,6 +888,23 @@ function buildReview() {
 }
 
 // ── SAVE TO SUPABASE ──────────────────────────────────────────────────────────
+
+// ── CALCUL MODE TRAÇABILITÉ ────────────────────────────────────────────────
+function calcModeTracabilite(pm, psc, pu) {
+  // Fusion des AI sur tous les niveaux scannés
+  const hasDLC  = !!(pm['17']||pm['15']||psc['17']||psc['15']||pu['17']||pu['15']);
+  const hasLot  = !!(pm['10']||psc['10']||pu['10']);
+  const hasSerie= !!(pm['21']||psc['21']||pu['21']);
+  const hasGTIN = !!(pm['01']||psc['01']||pu['01']);
+  if (hasSerie && hasDLC && hasLot) return 'SÉRIE+LOT+DLC';
+  if (hasSerie && hasLot)           return 'SÉRIE+LOT';
+  if (hasLot   && hasDLC)           return 'LOT+DLC';
+  if (hasLot)                       return 'LOT';
+  if (hasSerie)                     return 'SÉRIE';
+  if (hasDLC)                       return 'DLC SEULE';
+  if (hasGTIN)                      return 'EAN SIMPLE';
+  return 'AUCUNE';
+}
 async function saveArticle() {
   const btn=document.getElementById('saveBtn'), status=document.getElementById('saveStatus');
   btn.disabled=true; btn.innerHTML='<div class="spinner" style="width:16px;height:16px;border-color:rgba(255,255,255,.3);border-top-color:#fff"></div><span>Enregistrement…</span>';
@@ -909,9 +946,19 @@ async function saveArticle() {
     hauteur_master: parseFloat(gv('dH'))||null,
     poids_master: parseFloat(gv('dP'))||null,
     photo_colis_url: S.photo_colis_url||'',
-    photo_etiq_m_url: S.photo_etiq_master_url||'',
+    photo_etiq_m_url: S.photo_etiq_m_url||S.photo_etiq_master_url||'',
     photo_etiq_sc_url: S.photo_etiq_sc_url||'',
     photo_article_url: S.photo_article_url||'',
+    pdf_notice_url: S.pdf_notice_url||gv('fNoticeUrl')||'',
+    // Traçabilité calculée depuis les AI détectés
+    date_attendue: !!(pm['17']||pm['15']||pm['13']||pm['11']||pm['16']||
+                      psc['17']||psc['15']||pu['17']||pu['15']),
+    lot_attendu:   !!(pm['10']||psc['10']||pu['10']),
+    serie_attendue:!!(pm['21']||psc['21']||pu['21']),
+    fefo:          !!(pm['17']||pm['15']||psc['17']||psc['15']||pu['17']||pu['15']),
+    mode_tracabilite: calcModeTracabilite(pm, psc, pu),
+    lot_niveau:    S.lot_niveau||'',
+    serie_niveau:  S.serie_niveau||'',
     present_q2: true,
     updated_by: 'acquisition-app',
   };
