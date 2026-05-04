@@ -619,7 +619,9 @@ function stopAllCams(){ ['master','sc','unit'].forEach(stopCam); }
 
 // ── SCAN FIELDS ───────────────────────────────────────────────────────────────
 function addScan(level) {
-  const Cap=level[0].toUpperCase()+level.slice(1);
+  // Normalisation : 'sc' → 'SC', 'unit' → 'Unit', 'master' → 'Master'
+  const capMap = {master:'Master', sc:'SC', unit:'Unit'};
+  const Cap = capMap[level] || (level[0].toUpperCase()+level.slice(1));
   const n=++scanCounts[level], id=`si_${level}_${n}`;
   const row=document.createElement('div'); row.className='scan-row'; row.id='row_'+id;
   row.innerHTML=`<input type="text" class="fi mono" id="${id}" placeholder="${n===1?'Coller ou scanner…':'2e code — fusionné'}" autocomplete="off" autocorrect="off" spellcheck="false" oninput="onScanInput('${level}')">
@@ -628,7 +630,8 @@ function addScan(level) {
   if(n>1) document.getElementById(id).focus();
 }
 function addScanWithVal(level,val) {
-  const Cap=level[0].toUpperCase()+level.slice(1);
+  const capMap = {master:'Master', sc:'SC', unit:'Unit'};
+  const Cap = capMap[level] || (level[0].toUpperCase()+level.slice(1));
   const inputs=document.querySelectorAll(`#scans${Cap} input`);
   let target=null; inputs.forEach(i=>{ if(!i.value&&!target) target=i; });
   if(target) target.value=val; else { addScan(level); const all=document.querySelectorAll(`#scans${Cap} input`); all[all.length-1].value=val; }
@@ -637,7 +640,8 @@ function addScanWithVal(level,val) {
 function rmScan(rowId,level){ document.getElementById(rowId)?.remove(); onScanInput(level); }
 
 function onScanInput(level) {
-  const Cap=level[0].toUpperCase()+level.slice(1);
+  const capMap = {master:'Master', sc:'SC', unit:'Unit'};
+  const Cap = capMap[level] || (level[0].toUpperCase()+level.slice(1));
   const vals=Array.from(document.querySelectorAll(`#scans${Cap} input`)).map(i=>i.value.trim()).filter(Boolean);
   const merged=mergeScans(vals);
   S.parsed[level]=merged;
@@ -668,7 +672,8 @@ function fmtDate(r){ if(!r||r.length<6) return r||''; return '20'+r.slice(0,2)+'
 function dlcClose(r){ try{ const y=2000+parseInt(r.slice(0,2)),mo=parseInt(r.slice(2,4))-1,d=parseInt(r.slice(4,6)); return (new Date(y,mo,d)-Date.now())<86400000*180; }catch(e){return false;} }
 
 function renderParsed(level,parsed){
-  const Cap=level[0].toUpperCase()+level.slice(1);
+  const capMap = {master:'Master', sc:'SC', unit:'Unit'};
+  const Cap = capMap[level] || (level[0].toUpperCase()+level.slice(1));
   const box=document.getElementById('parsed'+Cap), rows=document.getElementById('parsed'+Cap+'Rows');
   if(!parsed||!parsed._raw){ box.classList.remove('vis'); return; }
   box.classList.add('vis');
