@@ -420,7 +420,7 @@ window.addEventListener('load', () => {
     return;
   }
   renderNav();
-  addScan('master'); addScan('sc'); addScan('unit');
+  addScan('master'); // SC et Unit initialisés à l'ouverture du toggle
   loadRecent();
   loadStats();
   updateMeasureBtn();
@@ -836,13 +836,19 @@ function toast(msg,type='info') {
   t._timer=setTimeout(()=>t.classList.remove('vis'),3000);
 }
 
+const _scanInit = {};
 function toggleSection(sec) {
   const body = document.getElementById('body'+sec);
   const icon = document.getElementById('toggle'+sec);
   if (!body) return;
   const open = body.style.display !== 'none';
   body.style.display = open ? 'none' : 'block';
-  if (icon) icon.textContent = open ? '▼' : '▲';
+  if (icon) icon.textContent = open ? '▼ afficher' : '▲ masquer';
+  // Initialise le champ de scan la première fois qu'on ouvre la section
+  if (!open && !_scanInit[sec]) {
+    _scanInit[sec] = true;
+    addScan(sec === 'SC' ? 'sc' : 'unit');
+  }
 }
 </script>
 </body>
