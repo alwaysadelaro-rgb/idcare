@@ -285,6 +285,7 @@ select.fi{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
     <div id="bodySC" style="display:none">
     <div class="scan-zone" style="border-color:#b2dfdb"><div class="szh"><span class="szl" style="color:#0e9e88">Scans S-Cond</span><span class="sz-add" onclick="addScan('sc')">+ scan</span></div><div id="scansSC"></div></div>
     <div class="parsed-box" id="parsedSC"><div class="ph" style="background:#0e9e88">Résultat S-Cond</div><div id="parsedSCRows"></div></div>
+    </div><!-- /bodySC -->
   </div>
 
   <!-- UNITÉ -->
@@ -378,8 +379,12 @@ const sb = {
   },
   async upsert(table, data) {
     const r = await fetch(`${SUPABASE_URL}/rest/v1/${table}`, {
-      method:'POST', body: JSON.stringify(data),
-      headers: {...this.headers(), 'Prefer':'resolution=merge-duplicates,return=representation'}
+      method: 'POST',
+      body: JSON.stringify(data),
+      headers: {
+        ...this.headers(),
+        'Prefer': 'resolution=merge-duplicates,return=representation'
+      }
     });
     if(!r.ok) throw new Error(await r.text());
     return r.json();
