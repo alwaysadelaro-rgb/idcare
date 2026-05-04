@@ -5,6 +5,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
+<meta name="version" content="3.7">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <title>ID-CARE — Acquisition Articles</title>
@@ -157,7 +158,10 @@ select.fi{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
   <div class="card" style="background:linear-gradient(135deg,var(--navy),#2E75B6);color:#fff;border:none">
     <div style="font-size:.95rem;font-weight:700;margin-bottom:5px">Enrichir un article</div>
     <div style="font-size:.75rem;opacity:.8;margin-bottom:12px;line-height:1.5">Recherchez un article existant ou créez-en un nouveau. Toutes les modifications sont sauvegardées directement dans Supabase.</div>
-    <button onclick="step=1;showStep()" style="padding:11px;background:#fff;color:var(--navy);border:none;border-radius:8px;font-family:'Space Grotesk',sans-serif;font-size:.85rem;font-weight:700;cursor:pointer;width:100%">➕ Commencer / Rechercher un article</button>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+    <button onclick="step=1;showStep()" style="padding:11px;background:#fff;color:var(--navy);border:none;border-radius:8px;font-family:'Space Grotesk',sans-serif;font-size:.85rem;font-weight:700;cursor:pointer;-webkit-appearance:none">🔍 Enrichir un article existant</button>
+    <button onclick="newArticle('');step=1;showStep();" style="padding:11px;background:var(--teal);color:#fff;border:none;border-radius:8px;font-family:'Space Grotesk',sans-serif;font-size:.85rem;font-weight:700;cursor:pointer;-webkit-appearance:none">➕ Créer un nouvel article</button>
+  </div>
   </div>
 
   <div class="card">
@@ -525,9 +529,41 @@ async function loadStats() {
 async function loadArticle(ref) {
   try {
     const data = await sb.get('articles', `ref_q2=eq.${encodeURIComponent(ref)}&limit=1`);
-    if(!data.length) return;
+    if(!data.length) { toast('Article non trouvé : '+ref, 'err'); return; }
     const a = data[0];
-    S = { ...freshState(), ...a, dirty:false };
+    // Réinitialisation complète — aucune donnée de la session précédente ne subsiste
+    S = freshState();
+    // Réinitialiser les champs de scan
+    ['Master','SC','Unit'].forEach(Cap => {
+      const container = document.getElementById('scans'+Cap);
+      if (container) container.innerHTML = '';
+    });
+    scanCounts = {master:0, sc:0, unit:0};
+    // Réinitialiser les champs formulaire
+    ['fRef','fDes','fFou','fPrix','fNoticeUrl'].forEach(id => sv(id,''));
+    sv('fStatut','ACTIF');
+    sv('qM',1); sv('qSC',0); sv('qExp',1);
+    ['dL','dW','dH','dP'].forEach(id => sv(id,''));
+    // Réinitialiser les photos
+    ['colis','etiq','sc','art'].forEach(k => {
+      const slot = document.getElementById('ps-'+k);
+      if (slot) {
+        slot.classList.remove('has');
+        const img = slot.querySelector('img');
+        if (img) img.remove();
+      }
+    });
+    // Fermer les sections SC et Unit
+    ['SC','Unit'].forEach(sec => {
+      const body = document.getElementById('body'+sec);
+      const icon = document.getElementById('toggle'+sec);
+      if (body) body.style.display = 'none';
+      if (icon) icon.textContent = '▼ afficher';
+      delete _scanInit[sec];
+    });
+    // Charger les données de l'article
+    Object.assign(S, a);
+    S.dirty = false;
 
     // ── Identification ──────────────────────────────────────────────────────
     sv('fRef', a.ref_q2||'');
@@ -669,7 +705,34 @@ async function doSearch(q) {
 
 document.addEventListener('click',e=>{ if(!e.target.closest('.sw')) document.getElementById('dd')?.classList.remove('open'); });
 
-function newArticle(q) { document.getElementById('dd').classList.remove('open'); sv('fRef',q); S.dirty=true; }
+function newArticle(q) {
+  document.getElementById('dd')?.classList.remove('open');
+  // Réinitialisation complète pour un nouvel article
+  S = freshState();
+  scanCounts = {master:0, sc:0, unit:0};
+  ['Master','SC','Unit'].forEach(Cap => {
+    const c = document.getElementById('scans'+Cap);
+    if (c) c.innerHTML = '';
+  });
+  ['fRef','fDes','fFou','fPrix','fNoticeUrl'].forEach(id => sv(id,''));
+  sv('fStatut','ACTIF'); sv('qM',1); sv('qSC',0); sv('qExp',1);
+  ['dL','dW','dH','dP'].forEach(id => sv(id,''));
+  ['colis','etiq','sc','art'].forEach(k => {
+    const slot = document.getElementById('ps-'+k);
+    if (slot) { slot.classList.remove('has'); const img=slot.querySelector('img'); if(img) img.remove(); }
+  });
+  ['SC','Unit'].forEach(sec => {
+    const body = document.getElementById('body'+sec);
+    const icon = document.getElementById('toggle'+sec);
+    if (body) body.style.display = 'none';
+    if (icon) icon.textContent = '▼ afficher';
+    delete _scanInit[sec];
+  });
+  document.getElementById('artBanner').innerHTML = '';
+  addScan('master');
+  if (q) sv('fRef', q);
+  S.dirty = false;
+}
 function showArtBanner(a) {
   const catBg={Nutrition:'var(--nutr)',Diabète:'var(--diab)',Parkinson:'var(--park)'};
   const catTc={Nutrition:'#1E8449',Diabète:'#2E75B6',Parkinson:'#C0392B'};
