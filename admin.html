@@ -562,6 +562,20 @@ async function loadArticle(ref) {
       }
     };
 
+    // Reconstituer S.parsed depuis les données Supabase
+    // pour que le payload utilise les bonnes valeurs même sans re-scan
+    if (a.gtin14_master) {
+      S.parsed.master = S.parsed.master || {};
+      S.parsed.master['01'] = a.gtin14_master;
+    }
+    if (a.gtin14_sc) {
+      S.parsed.sc = S.parsed.sc || {};
+      S.parsed.sc['01'] = a.gtin14_sc;
+    }
+    if (a.gtin14_unite) {
+      S.parsed.unit = S.parsed.unit || {};
+      S.parsed.unit['01'] = a.gtin14_unite;
+    }
     fillScanLevel('master', a.code_m1||'', a.code_m2||'');
     // SC et Unit : ouvrir le toggle si des données existent
     if (a.code_sc1 || a.gtin14_sc) {
@@ -918,26 +932,27 @@ async function saveArticle() {
     fournisseur: gv('fFou').trim(),
     prix_achat: parseFloat(gv('fPrix'))||null,
     classe_dm: S.classe_dm||'',
-    gtin14_master: pm['01']||'',
-    ai_01: !!(pm['01']),
-    ai_10: !!(pm['10']),
-    ai_11: !!(pm['11']),
-    ai_13: !!(pm['13']),
-    ai_15: !!(pm['15']),
-    ai_17: !!(pm['17']),
-    ai_21: !!(pm['21']),
-    ai_30: !!(pm['30']),
-    ai_37: !!(pm['37']),
-    ean13_master: ean13(pm),
-    code_m1: pm._raws?pm._raws[0]||'':'',
-    code_m2: pm._raws?pm._raws[1]||'':'',
+    // Codes : scan récent prioritaire, sinon valeur existante en base (S)
+    gtin14_master: pm['01'] || S.gtin14_master||'',
+    ai_01: !!(pm['01']||S.gtin14_master),
+    ai_10: !!(pm['10']||S.ai_10),
+    ai_11: !!(pm['11']||S.ai_11),
+    ai_13: !!(pm['13']||S.ai_13),
+    ai_15: !!(pm['15']||S.ai_15),
+    ai_17: !!(pm['17']||S.ai_17),
+    ai_21: !!(pm['21']||S.ai_21),
+    ai_30: !!(pm['30']||S.ai_30),
+    ai_37: !!(pm['37']||S.ai_37),
+    ean13_master: ean13(pm) || S.ean13_master||'',
+    code_m1: pm._raws?pm._raws[0]||'': S.code_m1||'',
+    code_m2: pm._raws?pm._raws[1]||'': S.code_m2||'',
 
-    gtin14_sc: psc['01']||'',
-    ean13_sc: ean13(psc),
-    code_sc1: psc._raws?psc._raws[0]||'':'',
-    gtin14_unite: pu['01']||'',
-    ean13_unite: ean13(pu),
-    code_u1: pu._raws?pu._raws[0]||'':'',
+    gtin14_sc: psc['01'] || S.gtin14_sc||'',
+    ean13_sc:  ean13(psc) || S.ean13_sc||'',
+    code_sc1:  psc._raws?psc._raws[0]||'': S.code_sc1||'',
+    gtin14_unite: pu['01'] || S.gtin14_unite||'',
+    ean13_unite:  ean13(pu) || S.ean13_unite||'',
+    code_u1:      pu._raws?pu._raws[0]||'': S.code_u1||'',
     qte_master: parseInt(gv('qM'))||null,
     qte_sous_cond: parseInt(gv('qSC'))||null,
     qte_mini_expedition: parseInt(gv('qExp'))||null,
