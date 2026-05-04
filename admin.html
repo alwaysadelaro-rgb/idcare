@@ -950,13 +950,6 @@ async function saveArticle() {
     photo_etiq_sc_url: S.photo_etiq_sc_url||'',
     photo_article_url: S.photo_article_url||'',
     pdf_notice_url: S.pdf_notice_url||gv('fNoticeUrl')||'',
-    // Traçabilité calculée depuis les AI détectés
-    date_attendue: !!(pm['17']||pm['15']||pm['13']||pm['11']||pm['16']||
-                      psc['17']||psc['15']||pu['17']||pu['15']),
-    lot_attendu:   !!(pm['10']||psc['10']||pu['10']),
-    serie_attendue:!!(pm['21']||psc['21']||pu['21']),
-    fefo:          !!(pm['17']||pm['15']||psc['17']||psc['15']||pu['17']||pu['15']),
-    mode_tracabilite: calcModeTracabilite(pm, psc, pu),
     lot_niveau:    S.lot_niveau||'',
     serie_niveau:  S.serie_niveau||'',
     present_q2: true,
