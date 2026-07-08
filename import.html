@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ID-CARE — Import en masse</title>
+<style>
+  :root{
+    --bg:#0f1720; --surface:#16212c; --surface2:#1d2b38; --line:#294050;
+    --ink:#e8eff4; --muted:#9fb2c0; --faint:#6d8496;
+    --accent:#2bb3c0; --accent2:#1a8a95;
+    --good:#33c07a; --good-bg:#12331f; --warn:#e0a53f; --warn-bg:#33280f;
+    --crit:#e56b6b; --crit-bg:#361b1b; --new:#3d8bff; --new-bg:#12233d;
+    --mono:ui-monospace,"Cascadia Code","SF Mono",Consolas,monospace;
+    --sans:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);line-height:1.5;font-size:15px}
+  .wrap{max-width:1160px;margin:0 auto;padding:0 20px 80px}
+  header{padding:26px 0 18px;border-bottom:1px solid var(--line);margin-bottom:24px;
+    display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+  header h1{font-size:1.3rem;margin:0;letter-spacing:-.01em}
+  header .sub{color:var(--muted);font-size:.85rem}
+  .spacer{flex:1}
+  a.back{color:var(--accent);text-decoration:none;font-size:.85rem;font-family:var(--mono)}
+
+  .modes{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:24px}
+  .mode{flex:1;min-width:220px;background:var(--surface);border:1px solid var(--line);border-radius:12px;
+    padding:14px 16px;cursor:pointer;transition:.15s;position:relative}
+  .mode:hover{border-color:var(--accent2)}
+  .mode.active{border-color:var(--accent);background:var(--surface2);box-shadow:0 0 0 1px var(--accent) inset}
+  .mode.soon{opacity:.6;cursor:default}
+  .mode .n{font-family:var(--mono);font-size:.72rem;color:var(--accent);letter-spacing:.05em}
+  .mode .t{font-weight:650;margin:4px 0 3px}
+  .mode .d{font-size:.8rem;color:var(--muted)}
+  .badge{position:absolute;top:10px;right:12px;font-family:var(--mono);font-size:.6rem;text-transform:uppercase;
+    letter-spacing:.06em;padding:2px 7px;border-radius:999px;background:var(--warn-bg);color:var(--warn)}
+
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:20px 22px;margin-bottom:18px}
+  .card h2{font-size:1.05rem;margin:0 0 4px}
+  .card p.hint{color:var(--muted);font-size:.85rem;margin:0 0 16px}
+
+  .drop{border:1.5px dashed var(--line);border-radius:12px;padding:26px;text-align:center;cursor:pointer;
+    transition:.15s;background:var(--surface2)}
+  .drop:hover,.drop.over{border-color:var(--accent);background:#1a2a37}
+  .drop .big{font-size:.98rem;font-weight:600}
+  .drop .small{color:var(--faint);font-size:.8rem;margin-top:4px;font-family:var(--mono)}
+  input[type=file]{display:none}
+
+  .files{display:flex;flex-direction:column;gap:8px;margin-top:14px}
+  .file{display:flex;align-items:center;gap:10px;background:var(--surface2);border:1px solid var(--line);
+    border-radius:9px;padding:8px 12px;font-size:.85rem}
+  .file .tag{font-family:var(--mono);font-size:.68rem;padding:2px 8px;border-radius:6px;font-weight:600}
+  .tag.cons{background:var(--new-bg);color:var(--new)} .tag.loc{background:#2a2140;color:#b79aff}
+  .tag.unk{background:var(--crit-bg);color:var(--crit)}
+  .file .rm{margin-left:auto;color:var(--faint);cursor:pointer;font-family:var(--mono)}
+
+  .btn{font-family:var(--sans);font-size:.9rem;font-weight:600;border:none;border-radius:9px;padding:11px 20px;
+    cursor:pointer;transition:.15s}
+  .btn-primary{background:var(--accent);color:#04222a} .btn-primary:hover{background:var(--accent2);color:#fff}
+  .btn-primary:disabled{background:var(--line);color:var(--faint);cursor:not-allowed}
+  .btn-ghost{background:transparent;color:var(--accent);border:1px solid var(--line)}
+  .btn-ghost:hover{border-color:var(--accent)}
+  .btn-row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:16px}
+
+  .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin:4px 0 18px}
+  .stat{background:var(--surface2);border:1px solid var(--line);border-radius:10px;padding:12px 14px}
+  .stat .v{font-size:1.5rem;font-weight:700;font-variant-numeric:tabular-nums}
+  .stat .k{font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-top:2px}
+  .stat.new .v{color:var(--new)} .stat.fill .v{color:var(--warn)} .stat.same .v{color:var(--faint)}
+  .stat.err .v{color:var(--crit)}
+
+  .tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:10px;margin-top:6px}
+  table{border-collapse:collapse;width:100%;font-size:.82rem;white-space:nowrap}
+  th,td{padding:7px 11px;text-align:left;border-bottom:1px solid var(--line)}
+  th{background:var(--surface2);position:sticky;top:0;font-size:.7rem;text-transform:uppercase;
+    letter-spacing:.04em;color:var(--muted)}
+  td.mono,th.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+  tr:last-child td{border-bottom:none}
+  .st{font-family:var(--mono);font-size:.68rem;padding:2px 8px;border-radius:6px;font-weight:600}
+  .st.new{background:var(--new-bg);color:var(--new)} .st.fill{background:var(--warn-bg);color:var(--warn)}
+  .st.same{background:var(--surface2);color:var(--faint)}
+  .filterbar{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0 6px;align-items:center}
+  .chip{font-family:var(--mono);font-size:.75rem;padding:5px 11px;border-radius:999px;border:1px solid var(--line);
+    background:var(--surface2);color:var(--muted);cursor:pointer}
+  .chip.on{border-color:var(--accent);color:var(--accent)}
+  input.search{background:var(--surface2);border:1px solid var(--line);border-radius:8px;color:var(--ink);
+    padding:7px 11px;font-size:.82rem;font-family:var(--mono);flex:1;min-width:160px}
+
+  .log{font-family:var(--mono);font-size:.78rem;background:#0a1119;border:1px solid var(--line);border-radius:10px;
+    padding:12px 14px;max-height:220px;overflow:auto;margin-top:14px;white-space:pre-wrap}
+  .log .ok{color:var(--good)} .log .ko{color:var(--crit)} .log .info{color:var(--muted)}
+  .bar{height:8px;background:var(--surface2);border-radius:999px;overflow:hidden;margin-top:12px}
+  .bar>i{display:block;height:100%;width:0;background:var(--accent);transition:width .2s}
+
+  .toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:var(--surface2);
+    border:1px solid var(--line);border-radius:10px;padding:12px 18px;font-size:.86rem;opacity:0;
+    pointer-events:none;transition:.25s;z-index:99;max-width:90vw}
+  .toast.show{opacity:1} .toast.ok{border-color:var(--good)} .toast.ko{border-color:var(--crit)}
+  .note{background:var(--warn-bg);border:1px solid transparent;border-radius:10px;padding:12px 14px;
+    font-size:.83rem;color:var(--ink);margin-top:14px}
+  .note b{color:var(--warn)}
+  code{font-family:var(--mono);font-size:.82em;background:var(--surface2);padding:1px 5px;border-radius:4px;color:var(--accent)}
+  .dl{color:var(--accent);cursor:pointer;text-decoration:underline;font-size:.83rem}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>📥 Import en masse</h1>
+    <span class="sub">ID-CARE — Référentiel articles</span>
+    <span class="spacer"></span>
+    <span id="conn" class="sub"></span>
+    <a class="back" href="admin.html">← admin</a>
+  </header>
+
+  <!-- SÉLECTEUR DE MODE -->
+  <div class="modes">
+    <div class="mode active" data-mode="articles" onclick="selectMode('articles')">
+      <div class="n">MODE 1</div>
+      <div class="t">Articles (inventaire Q2)</div>
+      <div class="d">Crée les réfs manquantes, complète les champs vides des existantes.</div>
+    </div>
+    <div class="mode" data-mode="emplacements" onclick="selectMode('emplacements')">
+      <div class="n">MODE 2</div>
+      <div class="t">Emplacements rack/niveau</div>
+      <div class="d">Relevés terrain Réf · Rack · Niveau · Emplacement.</div>
+      <span class="badge">migration 01</span>
+    </div>
+    <div class="mode" data-mode="stock" onclick="selectMode('stock')">
+      <div class="n">MODE 3</div>
+      <div class="t">Stock mini / maxi (appro)</div>
+      <div class="d">Mise à jour hebdo depuis le module appro DDMRP.</div>
+      <span class="badge">à venir</span>
+    </div>
+  </div>
+
+  <!-- ================= MODE 1 : ARTICLES ================= -->
+  <div id="panel-articles">
+    <div class="card">
+      <h2>1 · Charger l'inventaire Q2</h2>
+      <p class="hint">Dépose les exports Q2 (<code>Inventaire</code> = consommables, <code>Locatif</code>).
+        Format reconnu automatiquement : CSV tabulé UTF-16, guillemets Excel, prix au format français.</p>
+      <div class="drop" id="drop" onclick="document.getElementById('fileInput').click()">
+        <div class="big">Clique ou dépose les fichiers ici</div>
+        <div class="small">.csv &nbsp;·&nbsp; consommable + locatif acceptés ensemble</div>
+      </div>
+      <input type="file" id="fileInput" accept=".csv,.txt" multiple>
+      <div class="files" id="fileList"></div>
+    </div>
+
+    <div class="card" id="previewCard" style="display:none">
+      <h2>2 · Aperçu avant écriture</h2>
+      <p class="hint">Rien n'est envoyé tant que tu n'as pas cliqué <b>Importer</b>. Vérifie la répartition.</p>
+      <div class="stats" id="stats"></div>
+
+      <div class="filterbar">
+        <span class="chip on" data-f="all" onclick="setFilter('all',this)">Tout</span>
+        <span class="chip" data-f="new" onclick="setFilter('new',this)">Nouveaux</span>
+        <span class="chip" data-f="fill" onclick="setFilter('fill',this)">À compléter</span>
+        <span class="chip" data-f="same" onclick="setFilter('same',this)">Inchangés</span>
+        <input class="search" id="search" placeholder="filtrer réf / désignation…" oninput="renderTable()">
+      </div>
+      <div class="tablewrap"><table id="tbl"><thead><tr>
+        <th>État</th><th class="mono">Réf Q2</th><th>Désignation</th><th>Type</th>
+        <th>Fournisseur</th><th>Famille</th><th>Catégorie</th><th class="mono">Prix</th>
+      </tr></thead><tbody id="tblBody"></tbody></table></div>
+
+      <div class="btn-row">
+        <button class="btn btn-primary" id="importBtn" onclick="runImport()">Importer dans Supabase</button>
+        <button class="btn btn-ghost" onclick="resetAll()">Réinitialiser</button>
+        <span id="importInfo" class="sub"></span>
+      </div>
+      <div class="bar" id="progWrap" style="display:none"><i id="prog"></i></div>
+      <div class="log" id="log" style="display:none"></div>
+    </div>
+  </div>
+
+  <!-- ================= MODE 2 : EMPLACEMENTS ================= -->
+  <div id="panel-emplacements" style="display:none">
+    <div class="card">
+      <h2>Emplacements rack / niveau</h2>
+      <p class="hint">Import des relevés terrain. Un article = 1 emplacement PICKING (+ 1 MASSE optionnel).</p>
+      <div class="note"><b>Prérequis :</b> exécuter d'abord <code>MIGRATION_01_reconciliation_emplacements.sql</code>
+        dans Supabase (crée les tables <code>emplacements</code> et <code>article_emplacement</code>).
+        L'import sera activé une fois les tables en place et le relevé disponible.</div>
+      <p style="margin-top:16px">Trame standard attendue :
+        <span class="dl" onclick="downloadTemplate('emplacements')">⬇ télécharger trame_emplacements.csv</span></p>
+      <div class="tablewrap"><table><thead><tr><th class="mono">ref_q2</th><th class="mono">rack</th>
+        <th class="mono">niveau</th><th class="mono">position</th><th class="mono">type_stockage</th><th class="mono">site</th></tr></thead>
+        <tbody><tr><td class="mono">SPAAC</td><td class="mono">R12</td><td class="mono">N3</td><td class="mono">A</td>
+        <td class="mono">PICKING</td><td class="mono">IDF</td></tr></tbody></table></div>
+    </div>
+  </div>
+
+  <!-- ================= MODE 3 : STOCK ================= -->
+  <div id="panel-stock" style="display:none">
+    <div class="card">
+      <h2>Stock mini / maxi (appro hebdo)</h2>
+      <p class="hint">Trame réimportée chaque semaine après le module appro DDMRP.</p>
+      <p style="margin-top:6px">Trame standard :
+        <span class="dl" onclick="downloadTemplate('stock')">⬇ télécharger trame_stock.csv</span></p>
+      <div class="tablewrap"><table><thead><tr><th class="mono">ref_q2</th><th class="mono">stock_mini</th>
+        <th class="mono">stock_maxi</th><th class="mono">delai_appro_jours</th></tr></thead>
+        <tbody><tr><td class="mono">SPAAC</td><td class="mono">5</td><td class="mono">30</td><td class="mono">7</td></tr></tbody></table></div>
+      <div class="note">Module en attente de la sortie standard de l'outil appro. La brique d'écriture
+        réutilisera le moteur du mode 1 (upsert par <code>ref_q2</code>).</div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ==================== CONFIG ====================
+const SUPABASE_URL = localStorage.getItem('sb_url') || 'https://kybdqgrikfevstkwzaqe.supabase.co';
+const SUPABASE_KEY = localStorage.getItem('sb_service') || '';
+if(!SUPABASE_KEY){ alert('⚠️ Clé service manquante. Ouvre config.html.'); location.href='config.html'; }
+const H_READ = { apikey:SUPABASE_KEY, Authorization:`Bearer ${SUPABASE_KEY}`, Accept:'application/json' };
+const H_WRITE = { ...H_READ, 'Content-Type':'application/json', Prefer:'return=minimal,resolution=merge-duplicates' };
+document.getElementById('conn').textContent = '● ' + SUPABASE_URL.replace('https://','').split('.')[0];
+
+// ==================== HELPERS ====================
+const $ = id => document.getElementById(id);
+function toast(msg, kind=''){ const t=$('toast'); t.textContent=msg; t.className='toast show '+kind;
+  setTimeout(()=>t.className='toast',2600); }
+function clean(v){ if(v==null) return ''; v=String(v).trim();
+  if(v.startsWith('="')&&v.endsWith('"')) v=v.slice(2,-1); // guillemet Excel ="..."
+  return v.replace(/^"+|"+$/g,'').trim(); }
+function parseFR(v){ v=clean(v); if(!v) return null;
+  v=v.replace(/[\s  ]/g,'').replace(',', '.'); const n=parseFloat(v);
+  return isNaN(n)?null:n; }
+function deduceCategorie(txt){ const t=(txt||'').toUpperCase();
+  if(/DIAB/.test(t)) return 'Diabète';
+  if(/NUTRI|PNI|NEAD/.test(t)) return 'Nutrition';
+  if(/PARK/.test(t)) return 'Parkinson';
+  return ''; }
+function isEmpty(v){ return v===null||v===undefined||String(v).trim()===''; }
+
+// TextDecoder selon BOM (UTF-16LE / UTF-8)
+function decodeBuffer(buf){
+  const b=new Uint8Array(buf);
+  if(b.length>=2 && b[0]===0xFF && b[1]===0xFE) return new TextDecoder('utf-16le').decode(buf);
+  if(b.length>=2 && b[0]===0xFE && b[1]===0xFF) return new TextDecoder('utf-16be').decode(buf);
+  return new TextDecoder('utf-8').decode(buf);
+}
+// Parse CSV tabulé avec guillemets
+function parseCSV(text){
+  const delim = text.indexOf('\t')>-1 ? '\t' : (text.indexOf(';')>-1 ? ';' : ',');
+  const rows=[]; let row=[], cur='', q=false;
+  for(let i=0;i<text.length;i++){ const c=text[i];
+    if(q){ if(c==='"'){ if(text[i+1]==='"'){cur+='"';i++;} else q=false; } else cur+=c; }
+    else{ if(c==='"') q=true;
+      else if(c===delim){ row.push(cur); cur=''; }
+      else if(c==='\n'){ row.push(cur); rows.push(row); row=[]; cur=''; }
+      else if(c==='\r'){}
+      else cur+=c; } }
+  if(cur.length||row.length){ row.push(cur); rows.push(row); }
+  return rows.filter(r=>r.length>1 || (r.length===1&&r[0].trim()));
+}
+
+// ==================== STATE ====================
+let MODE='articles';
+let loadedFiles=[];     // {name, type:'cons'|'loc', rows}
+let merged=new Map();   // ref -> article payload (dédoublonné)
+let existing=new Map(); // ref -> current row from base
+let plan=[];            // {ref, payload, state:'new'|'fill'|'same', src, fillKeys:[]}
+let filter='all';
+
+// ==================== MODE SWITCH ====================
+function selectMode(m){
+  MODE=m;
+  document.querySelectorAll('.mode').forEach(el=>el.classList.toggle('active', el.dataset.mode===m));
+  ['articles','emplacements','stock'].forEach(x=>$('panel-'+x).style.display = x===m?'block':'none');
+}
+
+// ==================== FILE LOADING ====================
+const drop=$('drop');
+['dragover','dragenter'].forEach(e=>drop.addEventListener(e,ev=>{ev.preventDefault();drop.classList.add('over');}));
+['dragleave','drop'].forEach(e=>drop.addEventListener(e,ev=>{ev.preventDefault();drop.classList.remove('over');}));
+drop.addEventListener('drop',ev=>handleFiles(ev.dataTransfer.files));
+$('fileInput').addEventListener('change',ev=>handleFiles(ev.target.files));
+
+async function handleFiles(fileList){
+  for(const f of fileList){
+    const buf=await f.arrayBuffer();
+    const text=decodeBuffer(buf);
+    const rows=parseCSV(text);
+    if(!rows.length){ toast('Fichier vide : '+f.name,'ko'); continue; }
+    const hdr=rows[0].map(h=>clean(h).toLowerCase());
+    let type='unk';
+    if(hdr.includes('code article')) type='loc';
+    else if(hdr.includes('référence')||hdr.includes('reference')) type='cons';
+    loadedFiles.push({name:f.name, type, hdr:rows[0].map(clean), rows:rows.slice(1)});
+  }
+  renderFiles();
+  buildPlan();
+}
+function renderFiles(){
+  const map={cons:['cons','Consommable'],loc:['loc','Locatif'],unk:['unk','? non reconnu']};
+  $('fileList').innerHTML = loadedFiles.map((f,i)=>{
+    const [cls,lbl]=map[f.type];
+    return `<div class="file"><span class="tag ${cls}">${lbl}</span>
+      <span>${f.name}</span><span class="sub">· ${f.rows.length} lignes</span>
+      <span class="rm" onclick="removeFile(${i})">✕ retirer</span></div>`;
+  }).join('');
+}
+function removeFile(i){ loadedFiles.splice(i,1); renderFiles(); buildPlan(); }
+
+// ==================== MAPPING Q2 -> ARTICLE ====================
+function colIdx(hdr, names){ const low=hdr.map(h=>h.toLowerCase());
+  for(const n of names){ const i=low.indexOf(n); if(i>-1) return i; } return -1; }
+
+function mapRowsToArticles(f){
+  const h=f.hdr;
+  const iRef = colIdx(h, f.type==='loc'?['code article']:['référence','reference']);
+  const iFou = colIdx(h, ['fournisseur']);
+  const iDes = colIdx(h, ['désignation','designation']);
+  const iCat = colIdx(h, ['catégorie','categorie']);
+  const iPrix= colIdx(h, ['prix']);
+  const out=[];
+  for(const r of f.rows){
+    const ref=clean(r[iRef]||''); if(!ref) continue;
+    const cat=iCat>-1?clean(r[iCat]||''):'';
+    out.push({
+      ref_q2: ref,
+      designation: clean(r[iDes]||''),
+      fournisseur: iFou>-1?clean(r[iFou]||''):'',
+      type_article: f.type==='loc'?'Locatif':'Consommable',
+      famille: cat,
+      categorie: deduceCategorie(cat),
+      prix_achat: iPrix>-1?parseFR(r[iPrix]):null,
+      present_q2: true
+    });
+  }
+  return out;
+}
+
+// ==================== BUILD PLAN (diff base) ====================
+async function buildPlan(){
+  if(!loadedFiles.length){ $('previewCard').style.display='none'; return; }
+  // 1. dédoublonnage par ref (locatif prioritaire si conflit)
+  merged=new Map(); let conflicts=0;
+  const ordered=[...loadedFiles].sort((a,b)=>(a.type==='loc'?1:0)-(b.type==='loc'?1:0)); // cons puis loc (loc écrase)
+  for(const f of ordered){
+    for(const a of mapRowsToArticles(f)){
+      if(merged.has(a.ref_q2)) conflicts++;
+      // fusion : garder valeurs non vides
+      const prev=merged.get(a.ref_q2)||{};
+      const m={...prev};
+      for(const k of Object.keys(a)){ if(!isEmpty(a[k])) m[k]=a[k]; }
+      m.ref_q2=a.ref_q2; merged.set(a.ref_q2,m);
+    }
+  }
+  // 2. charger l'existant
+  toast('Lecture de la base…');
+  existing=new Map();
+  try{
+    const cols='ref_q2,designation,fournisseur,famille,categorie,prix_achat,type_article,present_q2';
+    let from=0; const step=1000;
+    while(true){
+      const r=await fetch(`${SUPABASE_URL}/rest/v1/articles?select=${cols}&order=ref_q2`,
+        {headers:{...H_READ, Range:`${from}-${from+step-1}`, 'Range-Unit':'items'}});
+      const data=await r.json();
+      if(!Array.isArray(data)) throw new Error(data.message||'lecture impossible');
+      data.forEach(a=>existing.set(a.ref_q2,a));
+      if(data.length<step) break; from+=step;
+    }
+  }catch(e){ toast('Erreur lecture base : '+e.message,'ko'); return; }
+
+  // 3. construire le plan (create + fill empty)
+  const fillable=['designation','fournisseur','famille','categorie','prix_achat','type_article','present_q2'];
+  plan=[];
+  for(const [ref,a] of merged){
+    const cur=existing.get(ref);
+    if(!cur){ plan.push({ref, state:'new', payload:a, src:a, fillKeys:Object.keys(a)}); continue; }
+    // existant : ne compléter que les champs vides
+    const fillKeys=[]; const payload={ref_q2:ref};
+    for(const k of fillable){
+      const isBoolPresent = (k==='present_q2');
+      const curEmpty = isBoolPresent ? (cur[k]!==true) : isEmpty(cur[k]);
+      if(curEmpty && !isEmpty(a[k])){ payload[k]=a[k]; fillKeys.push(k); }
+    }
+    plan.push({ref, state: fillKeys.length?'fill':'same', payload, src:a, fillKeys});
+  }
+  plan.sort((x,y)=>({new:0,fill:1,same:2})[x.state]-({new:0,fill:1,same:2})[y.state]);
+  renderStats(conflicts); renderTable();
+  $('previewCard').style.display='block';
+}
+
+function renderStats(conflicts){
+  const n=plan.filter(p=>p.state==='new').length;
+  const f=plan.filter(p=>p.state==='fill').length;
+  const s=plan.filter(p=>p.state==='same').length;
+  $('stats').innerHTML=`
+    <div class="stat"><div class="v">${merged.size}</div><div class="k">Réfs inventaire</div></div>
+    <div class="stat"><div class="v">${existing.size}</div><div class="k">Déjà en base</div></div>
+    <div class="stat new"><div class="v">${n}</div><div class="k">À créer</div></div>
+    <div class="stat fill"><div class="v">${f}</div><div class="k">À compléter</div></div>
+    <div class="stat same"><div class="v">${s}</div><div class="k">Inchangés</div></div>`;
+  $('importInfo').textContent = conflicts?`(${conflicts} réfs présentes dans les 2 fichiers — locatif prioritaire)`:'';
+}
+
+function setFilter(f,el){ filter=f; document.querySelectorAll('.chip[data-f]').forEach(c=>c.classList.remove('on'));
+  el.classList.add('on'); renderTable(); }
+
+function renderTable(){
+  const q=($('search').value||'').toLowerCase();
+  let rows=plan.filter(p=>filter==='all'||p.state===filter);
+  if(q) rows=rows.filter(p=>p.ref.toLowerCase().includes(q)||(p.src.designation||'').toLowerCase().includes(q));
+  rows=rows.slice(0,400);
+  const lbl={new:'Nouveau',fill:'À compléter',same:'Inchangé'};
+  $('tblBody').innerHTML=rows.map(p=>{
+    const a=p.src;
+    const hi=k=>p.fillKeys && p.fillKeys.includes(k)?'style="color:var(--warn)"':'';
+    return `<tr>
+      <td><span class="st ${p.state}">${lbl[p.state]}</span></td>
+      <td class="mono">${p.ref}</td>
+      <td ${hi('designation')}>${a.designation||'—'}</td>
+      <td>${a.type_article||''}</td>
+      <td ${hi('fournisseur')}>${a.fournisseur||'—'}</td>
+      <td ${hi('famille')}>${a.famille||'—'}</td>
+      <td ${hi('categorie')}>${a.categorie||'—'}</td>
+      <td class="mono" ${hi('prix_achat')}>${a.prix_achat!=null?a.prix_achat.toFixed(2):'—'}</td>
+    </tr>`;}).join('');
+  if(plan.filter(p=>filter==='all'||p.state===filter).length>400)
+    $('tblBody').innerHTML+=`<tr><td colspan="8" class="sub" style="text-align:center">… affichage limité à 400 lignes</td></tr>`;
+}
+
+// ==================== IMPORT ====================
+async function runImport(){
+  const toCreate=plan.filter(p=>p.state==='new');
+  const toFill=plan.filter(p=>p.state==='fill');
+  if(!toCreate.length && !toFill.length){ toast('Rien à importer','ko'); return; }
+  if(!confirm(`Confirmer :\n• ${toCreate.length} article(s) à CRÉER\n• ${toFill.length} article(s) à COMPLÉTER (champs vides)\n\nLes valeurs existantes ne seront jamais écrasées.`)) return;
+
+  const btn=$('importBtn'); btn.disabled=true;
+  const log=$('log'); log.style.display='block'; log.innerHTML='';
+  const progWrap=$('progWrap'), prog=$('prog'); progWrap.style.display='block';
+  const write=(m,c='info')=>{ log.innerHTML+=`<span class="${c}">${m}</span>\n`; log.scrollTop=log.scrollHeight; };
+  const total=toCreate.length+toFill.length; let done=0, ok=0, ko=0;
+  const tick=()=>{ done++; prog.style.width=(done/total*100)+'%'; };
+
+  // 1. CRÉATIONS — bulk insert par lots de 100
+  write(`▶ Création de ${toCreate.length} articles…`);
+  for(let i=0;i<toCreate.length;i+=100){
+    const chunk=toCreate.slice(i,i+100).map(p=>p.payload);
+    try{
+      const r=await fetch(`${SUPABASE_URL}/rest/v1/articles?on_conflict=ref_q2`,
+        {method:'POST', headers:H_WRITE, body:JSON.stringify(chunk)});
+      if(r.ok){ ok+=chunk.length; write(`  ✓ lot ${i/100+1} : ${chunk.length} créés`,'ok'); }
+      else{ ko+=chunk.length; write(`  ✗ lot ${i/100+1} : ${r.status} ${await r.text()}`,'ko'); }
+    }catch(e){ ko+=chunk.length; write(`  ✗ lot ${i/100+1} : ${e.message}`,'ko'); }
+    chunk.forEach(tick);
+  }
+
+  // 2. COMPLÉTIONS — PATCH individuel (champs vides uniquement)
+  write(`▶ Complétion de ${toFill.length} articles existants…`);
+  for(const p of toFill){
+    try{
+      const body={...p.payload}; delete body.ref_q2;
+      const r=await fetch(`${SUPABASE_URL}/rest/v1/articles?ref_q2=eq.${encodeURIComponent(p.ref)}`,
+        {method:'PATCH', headers:H_WRITE, body:JSON.stringify(body)});
+      if(r.ok){ ok++; } else { ko++; write(`  ✗ ${p.ref} : ${r.status} ${await r.text()}`,'ko'); }
+    }catch(e){ ko++; write(`  ✗ ${p.ref} : ${e.message}`,'ko'); }
+    tick();
+  }
+
+  write(`\n■ Terminé — ${ok} OK · ${ko} erreur(s).`, ko?'ko':'ok');
+  toast(ko?`Import terminé avec ${ko} erreur(s)`:'Import réussi ✓', ko?'ko':'ok');
+  btn.disabled=false;
+  buildPlan(); // rafraîchir le diff
+}
+
+function resetAll(){ loadedFiles=[]; merged.clear(); plan=[]; renderFiles();
+  $('previewCard').style.display='none'; $('log').style.display='none'; $('fileInput').value=''; }
+
+// ==================== TEMPLATES ====================
+function downloadTemplate(kind){
+  let csv;
+  if(kind==='emplacements') csv='ref_q2;rack;niveau;position;type_stockage;site\nSPAAC;R12;N3;A;PICKING;IDF\n';
+  else csv='ref_q2;stock_mini;stock_maxi;delai_appro_jours\nSPAAC;5;30;7\n';
+  const blob=new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+  a.download=`trame_${kind}.csv`; a.click();
+}
+</script>
+</body>
+</html>
