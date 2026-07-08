@@ -442,9 +442,18 @@ async function runImport(){
   const tick=()=>{ done++; prog.style.width=(done/total*100)+'%'; };
 
   // 1. CRÉATIONS — bulk insert par lots de 100
+  // PostgREST exige que tous les objets d'un lot aient EXACTEMENT les mêmes clés.
+  // On normalise donc chaque fiche sur un jeu de colonnes fixe ('' pour le texte,
+  // null pour le prix, true pour present_q2).
+  const NEW_COLS=['ref_q2','designation','fournisseur','type_article','famille','categorie','prix_achat','present_q2'];
+  const norm=p=>{ const o={};
+    for(const k of NEW_COLS){ let v=p.payload[k];
+      if(v===undefined||v===null) v = (k==='prix_achat')?null : (k==='present_q2')?true : '';
+      o[k]=v; }
+    return o; };
   write(`▶ Création de ${toCreate.length} articles…`);
   for(let i=0;i<toCreate.length;i+=100){
-    const chunk=toCreate.slice(i,i+100).map(p=>p.payload);
+    const chunk=toCreate.slice(i,i+100).map(norm);
     try{
       const r=await fetch(`${SUPABASE_URL}/rest/v1/articles?on_conflict=ref_q2`,
         {method:'POST', headers:H_WRITE, body:JSON.stringify(chunk)});
