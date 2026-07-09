@@ -1,0 +1,320 @@
+<title>ID-CARE — Import en masse : mode d'emploi & notice technique</title>
+<style>
+  :root{
+    --bg:#f5f7f8; --surface:#fff; --surface2:#eef2f3; --line:#d9e1e3; --line-soft:#e7edee;
+    --ink:#16232a; --ink-soft:#46595f; --ink-faint:#7c8b90;
+    --accent:#0e7c86; --accent2:#0b5c63; --accent-wash:#dcefef;
+    --good:#1f8a5b; --good-wash:#dcefe4; --warn:#b5761a; --warn-wash:#f6ebd6;
+    --crit:#c14343; --crit-wash:#f6dede; --new:#2f6fd0; --new-wash:#dde8f8;
+    --mono:ui-monospace,"Cascadia Code","SF Mono",Consolas,monospace;
+    --sans:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  }
+  @media (prefers-color-scheme:dark){:root{
+    --bg:#0e1618;--surface:#152125;--surface2:#1b2a2e;--line:#26383d;--line-soft:#1f2f33;
+    --ink:#e8eff0;--ink-soft:#a9bbbf;--ink-faint:#78908f;
+    --accent:#3cc6d1;--accent2:#63d6df;--accent-wash:#123c40;
+    --good:#4cc088;--good-wash:#12332a;--warn:#d69a3f;--warn-wash:#33280f;
+    --crit:#e07777;--crit-wash:#361b1b;--new:#6ea8ff;--new-wash:#132743;
+  }}
+  :root[data-theme="light"]{
+    --bg:#f5f7f8;--surface:#fff;--surface2:#eef2f3;--line:#d9e1e3;--line-soft:#e7edee;
+    --ink:#16232a;--ink-soft:#46595f;--ink-faint:#7c8b90;
+    --accent:#0e7c86;--accent2:#0b5c63;--accent-wash:#dcefef;
+    --good:#1f8a5b;--good-wash:#dcefe4;--warn:#b5761a;--warn-wash:#f6ebd6;
+    --crit:#c14343;--crit-wash:#f6dede;--new:#2f6fd0;--new-wash:#dde8f8;
+  }
+  :root[data-theme="dark"]{
+    --bg:#0e1618;--surface:#152125;--surface2:#1b2a2e;--line:#26383d;--line-soft:#1f2f33;
+    --ink:#e8eff0;--ink-soft:#a9bbbf;--ink-faint:#78908f;
+    --accent:#3cc6d1;--accent2:#63d6df;--accent-wash:#123c40;
+    --good:#4cc088;--good-wash:#12332a;--warn:#d69a3f;--warn-wash:#33280f;
+    --crit:#e07777;--crit-wash:#361b1b;--new:#6ea8ff;--new-wash:#132743;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);line-height:1.6;
+    -webkit-font-smoothing:antialiased}
+  .wrap{max-width:900px;margin:0 auto;padding:0 24px 96px}
+  code{font-family:var(--mono);font-size:.85em;background:var(--surface2);padding:1px 6px;border-radius:5px;
+    color:var(--accent2);white-space:nowrap}
+  a{color:var(--accent)}
+
+  header{padding:56px 0 30px;border-bottom:1px solid var(--line);margin-bottom:8px}
+  .eyebrow{font-family:var(--mono);font-size:.72rem;letter-spacing:.14em;text-transform:uppercase;
+    color:var(--accent);margin:0 0 14px}
+  h1{font-size:clamp(1.8rem,4vw,2.5rem);line-height:1.12;margin:0 0 12px;letter-spacing:-.02em;text-wrap:balance}
+  .sub{color:var(--ink-soft);max-width:60ch;margin:0}
+  .meta{display:flex;flex-wrap:wrap;gap:8px;margin-top:20px}
+  .meta span{font-family:var(--mono);font-size:.72rem;padding:4px 10px;border:1px solid var(--line);
+    border-radius:999px;color:var(--ink-soft);background:var(--surface)}
+
+  /* TOC */
+  .toc{position:sticky;top:0;background:var(--bg);padding:14px 0;border-bottom:1px solid var(--line-soft);
+    margin-bottom:40px;z-index:10;display:flex;gap:6px;flex-wrap:wrap}
+  .toc a{font-family:var(--mono);font-size:.74rem;text-decoration:none;color:var(--ink-soft);
+    padding:5px 11px;border-radius:7px;border:1px solid transparent}
+  .toc a:hover{background:var(--surface2);border-color:var(--line)}
+
+  .part{font-family:var(--mono);font-size:.76rem;letter-spacing:.12em;text-transform:uppercase;
+    color:#fff;background:var(--accent);display:inline-block;padding:5px 12px;border-radius:7px;margin:44px 0 8px}
+  @media (prefers-color-scheme:dark){.part{color:#08181a}}
+  :root[data-theme="dark"] .part{color:#08181a} :root[data-theme="light"] .part{color:#fff}
+
+  h2{font-size:1.35rem;margin:28px 0 6px;letter-spacing:-.01em;scroll-margin-top:70px}
+  h3{font-size:1.02rem;margin:26px 0 8px}
+  p{margin:0 0 14px;color:var(--ink-soft)}
+  p.ink{color:var(--ink)}
+  ul,ol{margin:0 0 16px;padding-left:22px;color:var(--ink-soft)}
+  li{margin-bottom:7px}
+  li::marker{color:var(--accent)}
+
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:20px 24px;margin:18px 0}
+
+  /* steps */
+  .steps{counter-reset:s;display:flex;flex-direction:column;gap:0;margin:18px 0}
+  .step{display:grid;grid-template-columns:34px 1fr;gap:16px;padding:16px 0;border-bottom:1px dashed var(--line)}
+  .step:last-child{border:none}
+  .step::before{counter-increment:s;content:counter(s);font-family:var(--mono);font-weight:700;
+    background:var(--accent);color:#fff;width:30px;height:30px;border-radius:50%;display:grid;place-items:center;font-size:.85rem}
+  :root[data-theme="dark"] .step::before{color:#08181a}
+  @media(prefers-color-scheme:dark){.step::before{color:#08181a}}
+  :root[data-theme="light"] .step::before{color:#fff}
+  .step h4{margin:2px 0 4px;font-size:1rem}
+  .step p{margin:0;font-size:.9rem}
+
+  /* callouts */
+  .box{border-radius:11px;padding:14px 18px;margin:16px 0;font-size:.9rem}
+  .box.warn{background:var(--warn-wash)} .box.warn b{color:var(--warn)}
+  .box.crit{background:var(--crit-wash)} .box.crit b{color:var(--crit)}
+  .box.good{background:var(--good-wash)} .box.good b{color:var(--good)}
+  .box p{margin:0 0 6px;color:var(--ink)} .box p:last-child{margin:0}
+
+  /* status legend */
+  .legend{display:flex;flex-wrap:wrap;gap:10px;margin:14px 0}
+  .lg{display:flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--line);
+    border-radius:9px;padding:8px 12px;font-size:.85rem;color:var(--ink-soft)}
+  .st{font-family:var(--mono);font-size:.68rem;padding:2px 8px;border-radius:6px;font-weight:700}
+  .st.new{background:var(--new-wash);color:var(--new)} .st.fill{background:var(--warn-wash);color:var(--warn)}
+  .st.same{background:var(--surface2);color:var(--ink-faint)}
+
+  /* tables */
+  .tw{overflow-x:auto;border:1px solid var(--line);border-radius:11px;margin:16px 0}
+  table{border-collapse:collapse;width:100%;font-size:.85rem}
+  th,td{padding:9px 13px;text-align:left;border-bottom:1px solid var(--line-soft);vertical-align:top}
+  th{background:var(--surface2);font-size:.72rem;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-faint);
+    white-space:nowrap}
+  tr:last-child td{border:none}
+  td.mono,th.mono{font-family:var(--mono)}
+  td b{color:var(--ink)}
+
+  pre{background:#0a1119;color:#cfe3e6;border:1px solid var(--line);border-radius:11px;padding:16px 18px;
+    overflow-x:auto;font-family:var(--mono);font-size:.82rem;line-height:1.55;margin:16px 0}
+  pre .c{color:#5f7d84} pre .k{color:#5fd0d9}
+
+  .kv{display:grid;grid-template-columns:auto 1fr;gap:6px 18px;font-size:.88rem;margin:14px 0}
+  .kv dt{font-family:var(--mono);color:var(--accent2);white-space:nowrap}
+  .kv dd{margin:0;color:var(--ink-soft)}
+
+  footer{margin-top:60px;padding-top:20px;border-top:1px solid var(--line);font-family:var(--mono);
+    font-size:.78rem;color:var(--ink-faint)}
+  @media(max-width:640px){ .kv{grid-template-columns:1fr;gap:2px 0} .kv dd{margin-bottom:8px} }
+</style>
+
+<div class="wrap">
+
+  <header>
+    <p class="eyebrow">ID-CARE × ALways — Référentiel articles</p>
+    <h1>Import en masse : mode d'emploi & notice technique</h1>
+    <p class="sub">Comment créer et compléter les articles du référentiel à partir des exports Q2,
+      et comment l'outil <code>import.html</code> fonctionne sous le capot.</p>
+    <div class="meta">
+      <span>v1 · 08/07/2026</span><span>import.html · mode 1</span>
+      <span>Supabase · articles</span><span>Périmètre IDF</span>
+    </div>
+  </header>
+
+  <nav class="toc">
+    <a href="#demarrer">Démarrer</a>
+    <a href="#pas-a-pas">Pas à pas</a>
+    <a href="#apercu">Lire l'aperçu</a>
+    <a href="#modes23">Modes 2 & 3</a>
+    <a href="#archi">Architecture</a>
+    <a href="#format">Format d'entrée</a>
+    <a href="#mapping">Mapping</a>
+    <a href="#ecriture">Logique d'écriture</a>
+    <a href="#migration">Migration 01</a>
+    <a href="#deploiement">Déploiement</a>
+    <a href="#limites">Limites</a>
+  </nav>
+
+  <!-- ============ PARTIE 1 : MODE D'EMPLOI ============ -->
+  <span class="part">Partie 1 — Mode d'emploi</span>
+
+  <h2 id="demarrer">Avant de commencer</h2>
+  <p class="ink">L'outil s'utilise dans le navigateur, sans installation. Il a besoin de deux choses :</p>
+  <div class="kv">
+    <dt>1. La clé service</dt>
+    <dd>Saisie une seule fois dans <code>config.html</code> (elle donne le droit d'écrire en base).
+      C'est la même clé que celle qu'utilise <code>admin.html</code>.</dd>
+    <dt>2. import.html en ligne</dt>
+    <dd>Le fichier doit être déployé sur GitHub Pages, à côté de <code>admin.html</code>
+      (voir <a href="#deploiement">Déploiement</a>). Ouvrir le fichier en local ne suffit pas :
+      la clé n'y serait pas accessible.</dd>
+  </div>
+  <div class="box good"><p><b>Filet de sécurité —</b> l'outil ne remplace <b>jamais</b> une valeur déjà
+    saisie en base, et rien n'est écrit tant que tu n'as pas cliqué « Importer » après avoir vu l'aperçu.</p></div>
+
+  <h2 id="pas-a-pas">Importer les articles Q2 — pas à pas</h2>
+  <div class="steps">
+    <div class="step"><div></div><div>
+      <h4>Exporter l'inventaire depuis Q2</h4>
+      <p>Deux fichiers : l'inventaire consommable et l'inventaire locatif (format CSV, tel que Q2 le sort).
+        Aucun nettoyage manuel n'est nécessaire.</p></div></div>
+    <div class="step"><div></div><div>
+      <h4>Ouvrir import.html et rester sur le Mode 1</h4>
+      <p>« Articles (inventaire Q2) » est sélectionné par défaut. La pastille de connexion en haut à droite
+        confirme que la base est joignable.</p></div></div>
+    <div class="step"><div></div><div>
+      <h4>Déposer les deux fichiers</h4>
+      <p>Glisse-les dans la zone, ou clique pour les choisir. L'outil reconnaît tout seul lequel est
+        <b>consommable</b> et lequel est <b>locatif</b>, et affiche le nombre de lignes lues.</p></div></div>
+    <div class="step"><div></div><div>
+      <h4>Lire l'aperçu</h4>
+      <p>Le tableau de synthèse s'affiche : combien d'articles seront <b>créés</b>, combien seront
+        <b>complétés</b>, combien restent <b>inchangés</b>. Rien n'est encore écrit.</p></div></div>
+    <div class="step"><div></div><div>
+      <h4>Vérifier puis lancer</h4>
+      <p>Filtre sur « Nouveaux » pour contrôler quelques lignes, puis clique <b>Importer dans Supabase</b>
+        et confirme. Une barre de progression et un journal détaillent l'opération.</p></div></div>
+    <div class="step"><div></div><div>
+      <h4>Contrôler le résultat</h4>
+      <p>Ouvre <code>admin.html</code>, recherche 2–3 réfs nouvellement créées et vérifie
+        désignation / fournisseur / type. Au premier run, valide sur un petit lot avant de généraliser.</p></div></div>
+  </div>
+
+  <h2 id="apercu">Comment lire l'aperçu</h2>
+  <p>Chaque référence de l'inventaire est classée dans l'un de ces trois états :</p>
+  <div class="legend">
+    <div class="lg"><span class="st new">Nouveau</span> Absent de la base → sera <b>créé</b></div>
+    <div class="lg"><span class="st fill">À compléter</span> Existe déjà, mais des champs sont vides → seuls ces champs seront remplis</div>
+    <div class="lg"><span class="st same">Inchangé</span> Existe déjà et complet → l'outil n'y touche pas</div>
+  </div>
+  <p>Dans les lignes « À compléter », les valeurs affichées en <b style="color:var(--warn)">orange</b>
+    sont précisément celles qui seront écrites. Les filtres et la recherche en haut du tableau permettent
+    d'isoler un état ou une référence.</p>
+  <div class="box warn"><p><b>Bon à savoir —</b> une référence présente à la fois dans le consommable et le
+    locatif (cas connu) est comptée une seule fois : la version <b>locatif</b> est prioritaire.</p></div>
+
+  <h2 id="modes23">Modes 2 & 3 (à venir)</h2>
+  <p><b>Mode 2 — Emplacements rack/niveau.</b> Pour importer les relevés terrain. Nécessite d'exécuter
+    d'abord la migration SQL (crée les tables d'emplacements). La trame standard est téléchargeable depuis
+    l'onglet : <code>ref_q2 ; rack ; niveau ; position ; type_stockage ; site</code>.</p>
+  <p><b>Mode 3 — Stock mini/maxi.</b> Pour la mise à jour hebdomadaire issue de l'outil appro. Trame :
+    <code>ref_q2 ; stock_mini ; stock_maxi ; delai_appro_jours</code>. En attente de la sortie standard du module appro.</p>
+
+  <!-- ============ PARTIE 2 : NOTICE TECHNIQUE ============ -->
+  <span class="part">Partie 2 — Notice technique</span>
+
+  <h2 id="archi">Architecture</h2>
+  <p>Application d'une seule page (<code>import.html</code>), sans dépendance externe ni build.
+    Elle parle directement à l'API REST de Supabase (PostgREST) avec la clé <code>service_role</code>.</p>
+  <div class="kv">
+    <dt>URL base</dt><dd><code>localStorage.sb_url</code> (défaut : projet kybdqgrikfevstkwzaqe)</dd>
+    <dt>Clé écriture</dt><dd><code>localStorage.sb_service</code> — mêmes clés que <code>admin.html</code></dd>
+    <dt>Lecture</dt><dd><code>GET /rest/v1/articles</code> paginé par <code>Range</code> (lots de 1000)</dd>
+    <dt>Écriture</dt><dd><code>POST</code> (upsert) et <code>PATCH</code>, header
+      <code>Prefer: return=minimal, resolution=merge-duplicates</code></dd>
+  </div>
+
+  <h2 id="format">Format d'entrée reconnu</h2>
+  <p>L'outil absorbe le format brut sorti par Q2, sans conversion préalable :</p>
+  <ul>
+    <li><b>Encodage</b> — détection du BOM : UTF-16 LE / BE, sinon UTF-8. (Les exports Q2 sont en UTF-16 LE.)</li>
+    <li><b>Séparateur</b> — tabulation détectée en priorité, puis <code>;</code>, puis <code>,</code>.</li>
+    <li><b>Guillemets Excel</b> — les valeurs de type <code>="260528"</code> sont nettoyées automatiquement.</li>
+    <li><b>Prix au format français</b> — <code>1 499,00</code> → <code>1499.00</code> (espaces et virgule gérés).</li>
+    <li><b>Type de fichier</b> — déduit de l'en-tête : colonne <code>Code Article</code> ⇒ locatif ;
+      colonne <code>Référence</code> ⇒ consommable.</li>
+  </ul>
+  <div class="box good"><p><b>Validé le 08/07/2026 —</b> 461 réfs consommables + 67 locatives lues correctement,
+    15 réfs communes, 513 réfs uniques (base : 495).</p></div>
+
+  <h2 id="mapping">Mapping Q2 → référentiel</h2>
+  <p>Une fiche article est reconstruite en dédoublonnant l'inventaire par référence. Seuls les champs
+    « socle » sont alimentés ici ; le reste (codes-barres, AI, dimensions) est enrichi ensuite via le scan.</p>
+  <div class="tw"><table>
+    <thead><tr><th>Colonne base</th><th>Source Q2</th><th>Règle</th></tr></thead>
+    <tbody>
+      <tr><td class="mono"><b>ref_q2</b></td><td>Référence / Code Article</td><td>Clé d'unicité</td></tr>
+      <tr><td class="mono">designation</td><td>Désignation</td><td>Texte nettoyé</td></tr>
+      <tr><td class="mono">fournisseur</td><td>Fournisseur</td><td>Texte</td></tr>
+      <tr><td class="mono">type_article</td><td>— (fichier)</td><td>Consommable ou Locatif selon le fichier</td></tr>
+      <tr><td class="mono">famille</td><td>Catégorie</td><td>Libellé Q2 brut (ex. <code>DIABETE-ADELIA</code>)</td></tr>
+      <tr><td class="mono">categorie</td><td>Catégorie</td><td>Déduite : contient DIAB→Diabète, NUTRI/PNI/NEAD→Nutrition, PARK→Parkinson, sinon vide</td></tr>
+      <tr><td class="mono">prix_achat</td><td>Prix</td><td>Locatif uniquement (le consommable n'a pas de prix)</td></tr>
+      <tr><td class="mono">present_q2</td><td>—</td><td>Toujours <code>true</code> (présent dans Q2)</td></tr>
+    </tbody>
+  </table></div>
+  <div class="box warn"><p><b>Pourquoi ne pas mettre la « Catégorie » Q2 dans <code>categorie</code> ?</b>
+    La colonne <code>categorie</code> a une contrainte stricte (Nutrition/Diabète/Parkinson). Les libellés Q2
+    (<code>Patch</code>, <code>DIABETE-ADELIA</code>…) la violeraient. Ils vont donc dans <code>famille</code>
+    (texte libre), avec déduction de la catégorie quand c'est possible.</p></div>
+
+  <h2 id="ecriture">Logique de diff & d'écriture</h2>
+  <p>Après lecture de la base, chaque référence est comparée et traitée différemment :</p>
+  <ul>
+    <li><b>Nouveau</b> → insert en lot (<code>POST</code>, paquets de 100) avec le jeu de colonnes complet.</li>
+    <li><b>À compléter</b> → <code>PATCH</code> individuel ne portant que les colonnes actuellement vides.
+      Une valeur déjà présente n'est jamais dans le payload, donc jamais écrasée.</li>
+    <li><b>Inchangé</b> → aucune requête.</li>
+  </ul>
+  <pre><span class="c">// existant : on ne complète que le vide</span>
+<span class="k">for</span> (const k of fillable) {
+  const curEmpty = isEmpty(cur[k]);
+  <span class="k">if</span> (curEmpty && !isEmpty(nouveau[k])) payload[k] = nouveau[k];
+}</pre>
+  <p>Le upsert utilise <code>on_conflict=ref_q2</code> + <code>resolution=merge-duplicates</code>.
+    Après import, le diff est recalculé automatiquement.</p>
+
+  <h2 id="migration">Migration 01 (prérequis Mode 2)</h2>
+  <p>Le fichier <code>MIGRATION_01_reconciliation_emplacements.sql</code> se joue dans Supabase &gt; SQL Editor,
+    bloc par bloc. Non destructif sauf le bloc A-2 (commenté).</p>
+  <div class="kv">
+    <dt>Bloc A</dt><dd>Corrige le doublon <code>delai_appro_j</code> / <code>delai_appro_jours</code>
+      (rapatrie les valeurs, drop optionnel).</dd>
+    <dt>Bloc B</dt><dd>Table <code>emplacements</code> — référentiel de tous les emplacements, multi-site
+      (IDF / ST-OUEN / REGION-…), avec code lisible calculé.</dd>
+    <dt>Bloc C</dt><dd>Table <code>article_emplacement</code> — lien article ↔ emplacement,
+      <code>type_stockage</code> PICKING (1 par article) + MASSE (2ᵉ optionnel).</dd>
+    <dt>Bloc D</dt><dd>Vue <code>v_article_emplacement</code> + grants.</dd>
+  </div>
+  <div class="box crit"><p><b>Rappel data —</b> le successeur d'un article est déjà stocké en base
+    (<code>remplace_par text[]</code>), et le prédécesseur dans <code>remplace_ref</code>. L'évolution
+    « statut &amp; remplacement visibles » est donc un travail d'<b>affichage</b>, pas de structure.</p></div>
+
+  <h2 id="deploiement">Déploiement (GitHub Pages)</h2>
+  <ol>
+    <li>Aller sur le dépôt <code>alwaysadelaro-rgb/idcare</code>.</li>
+    <li><b>Add file → Upload files</b> → déposer <code>import.html</code> → <b>Commit changes</b>.</li>
+    <li>Attendre 1–2 min, puis ouvrir <code>…github.io/idcare/import.html</code>.</li>
+    <li>Vider le cache si besoin (Ctrl+Shift+R).</li>
+  </ol>
+  <p>Un lien « 📥 Import masse » existe déjà dans le menu de <code>admin.html</code> : une fois le fichier
+    en ligne, il cesse de renvoyer le 404 et pointe vers l'outil.</p>
+
+  <h2 id="limites">Limites connues & vigilance</h2>
+  <ul>
+    <li>Le consommable Q2 n'exporte pas de prix : ces articles sont créés sans <code>prix_achat</code>.</li>
+    <li>La « Catégorie » Q2 n'est pas toujours déductible en catégorie base ; <code>famille</code> reste
+      la source fiable.</li>
+    <li>Les colonnes codes-barres / AI / dimensions ne sont pas alimentées par l'import : elles relèvent du
+      scan dans <code>admin.html</code>.</li>
+    <li>L'écriture réelle en base dépend de la clé <code>service_role</code> et des droits RLS ;
+      tester sur un petit lot au premier usage.</li>
+    <li>Le « Lieu » des exports (STOCK PNI IDF, STOCK SAINT OUEN…) est une cartographie de stocks par
+      personne/région — distinct des emplacements rack du Mode 2.</li>
+  </ul>
+
+  <footer>ID-CARE × ALways Consulting — Notice import.html v1 — 08/07/2026.
+    À conserver avec la synthèse Claude Code du référentiel.</footer>
+
+</div>
