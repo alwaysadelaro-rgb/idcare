@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>ID-CARE — Import en masse</title>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
 <style>
   :root{
     --bg:#0f1720; --surface:#16212c; --surface2:#1d2b38; --line:#294050;
@@ -179,17 +180,58 @@
   <!-- ================= MODE 2 : EMPLACEMENTS ================= -->
   <div id="panel-emplacements" style="display:none">
     <div class="card">
-      <h2>Emplacements rack / niveau</h2>
-      <p class="hint">Import des relevés terrain. Un article = 1 emplacement PICKING (+ 1 MASSE optionnel).</p>
-      <div class="note"><b>Prérequis :</b> exécuter d'abord <code>MIGRATION_01_reconciliation_emplacements.sql</code>
-        dans Supabase (crée les tables <code>emplacements</code> et <code>article_emplacement</code>).
-        L'import sera activé une fois les tables en place et le relevé disponible.</div>
-      <p style="margin-top:16px">Trame standard attendue :
-        <span class="dl" onclick="downloadTemplate('emplacements')">⬇ télécharger trame_emplacements.csv</span></p>
-      <div class="tablewrap"><table><thead><tr><th class="mono">ref_q2</th><th class="mono">rack</th>
-        <th class="mono">niveau</th><th class="mono">position</th><th class="mono">type_stockage</th><th class="mono">site</th></tr></thead>
-        <tbody><tr><td class="mono">SPAAC</td><td class="mono">R12</td><td class="mono">N3</td><td class="mono">A</td>
-        <td class="mono">PICKING</td><td class="mono">IDF</td></tr></tbody></table></div>
+      <h2>1 · Charger les fichiers d'implantation</h2>
+      <p class="hint">Classeurs Excel « Implantation Racks » (NUTRITION, DIABETE, PARKINSON, PERF) —
+        1 onglet par rack, colonnes <code>Rack · Niveau · Emplacement · Référence Q2</code>.
+        Tous les onglets sont lus automatiquement.</p>
+      <div class="note"><b>Prérequis :</b> exécuter d'abord <code>MIGRATION_01</code> dans Supabase
+        (tables <code>emplacements</code> + <code>article_emplacement</code>).</div>
+
+      <div style="display:flex;gap:14px;flex-wrap:wrap;align-items:end;margin:16px 0 4px">
+        <div class="field" style="flex:none">
+          <label style="font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em">Site / entrepôt</label><br>
+          <input class="search" id="e_site" value="BCR" style="width:130px;flex:none" title="Entrepôt physique (ex. BCR = Brie-Comte-Robert)">
+        </div>
+        <div class="field" style="flex:none">
+          <label style="font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em">Type de stockage</label><br>
+          <select class="search" id="e_type" style="width:130px;flex:none">
+            <option value="PICKING">PICKING</option><option value="MASSE">MASSE</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="drop" id="e_drop" onclick="document.getElementById('e_fileInput').click()" style="margin-top:12px">
+        <div class="big">Clique ou dépose les classeurs .xlsx</div>
+        <div class="small">multi-onglets · plusieurs fichiers acceptés</div>
+      </div>
+      <input type="file" id="e_fileInput" accept=".xlsx,.xls" multiple>
+      <div class="files" id="e_fileList"></div>
+    </div>
+
+    <div class="card" id="e_previewCard" style="display:none">
+      <h2>2 · Aperçu avant écriture</h2>
+      <p class="hint">Vérifie les emplacements détectés et les réfs. Rien n'est écrit avant le clic <b>Importer</b>.</p>
+      <div class="stats" id="e_stats"></div>
+
+      <div class="filterbar">
+        <span class="chip on" data-ef="all" onclick="eSetFilter('all',this)">Tout</span>
+        <span class="chip" data-ef="ok" onclick="eSetFilter('ok',this)">Réf connue</span>
+        <span class="chip" data-ef="unknown" onclick="eSetFilter('unknown',this)">Réf inconnue</span>
+        <span class="chip" data-ef="dup" onclick="eSetFilter('dup',this)">Réf en double</span>
+        <input class="search" id="e_search" placeholder="filtrer réf / rack…" oninput="eRenderTable()">
+      </div>
+      <div class="tablewrap"><table><thead><tr>
+        <th>État</th><th class="mono">Réf Q2</th><th>Désignation (fichier)</th><th class="mono">Rack</th>
+        <th class="mono">Niveau</th><th class="mono">Emplacement</th><th class="mono">Code emplacement</th>
+      </tr></thead><tbody id="e_tblBody"></tbody></table></div>
+
+      <div class="btn-row">
+        <button class="btn btn-primary" id="e_importBtn" onclick="eRunImport()">Importer les emplacements</button>
+        <button class="btn btn-ghost" onclick="eReset()">Réinitialiser</button>
+        <span id="e_info" class="sub"></span>
+      </div>
+      <div class="bar" id="e_progWrap" style="display:none"><i id="e_prog"></i></div>
+      <div class="log" id="e_log" style="display:none"></div>
     </div>
   </div>
 
@@ -483,6 +525,200 @@ async function runImport(){
 
 function resetAll(){ loadedFiles=[]; merged.clear(); plan=[]; renderFiles();
   $('previewCard').style.display='none'; $('log').style.display='none'; $('fileInput').value=''; }
+
+// ==================================================================
+// ==================== MODE 2 : EMPLACEMENTS ========================
+// ==================================================================
+let eRows=[];        // {ref_q2, designation, rack, niveau, position, sheet}
+let eArticles=new Map(); // ref_q2 -> article_id (existants)
+let ePlan=[];        // lignes enrichies {..., state:'ok'|'unknown'|'dup', code}
+let eFilter='all';
+
+const eDrop=$('e_drop');
+['dragover','dragenter'].forEach(e=>eDrop.addEventListener(e,ev=>{ev.preventDefault();eDrop.classList.add('over');}));
+['dragleave','drop'].forEach(e=>eDrop.addEventListener(e,ev=>{ev.preventDefault();eDrop.classList.remove('over');}));
+eDrop.addEventListener('drop',ev=>eHandleFiles(ev.dataTransfer.files));
+$('e_fileInput').addEventListener('change',ev=>eHandleFiles(ev.target.files));
+
+// nettoie une valeur cellule Excel (nombre -> texte sans .0)
+function xlCell(v){ if(v===null||v===undefined) return '';
+  if(typeof v==='number'){ return Number.isInteger(v)?String(v):String(v); }
+  return String(v).trim(); }
+function hIndex(headerRow, names){ const low=headerRow.map(h=>String(h||'').trim().toLowerCase());
+  for(const n of names){ const i=low.indexOf(n); if(i>-1) return i; } return -1; }
+
+async function eHandleFiles(fileList){
+  if(typeof XLSX==='undefined'){ toast('Lecteur Excel non chargé (vérifie la connexion)','ko'); return; }
+  for(const f of fileList){
+    try{
+      const buf=await f.arrayBuffer();
+      const wb=XLSX.read(buf,{type:'array'});
+      let n=0;
+      for(const sheet of wb.SheetNames){
+        const ws=wb.Sheets[sheet];
+        const grid=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
+        if(!grid.length) continue;
+        const hdr=grid[0];
+        const iRef=hIndex(hdr,['référence q2','reference q2','ref_q2','référence','reference']);
+        const iRack=hIndex(hdr,['rack']);
+        const iNiv=hIndex(hdr,['niveau']);
+        const iEmp=hIndex(hdr,['emplacement','position']);
+        const iDes=hIndex(hdr,['désignation q2','designation q2','désignation','designation']);
+        if(iRef<0) continue; // onglet sans colonne référence
+        for(let r=1;r<grid.length;r++){
+          const row=grid[r];
+          const ref=xlCell(row[iRef]);
+          if(!ref) continue; // ligne vide (pas de réf)
+          const rack=(iRack>-1 && xlCell(row[iRack])) ? xlCell(row[iRack]) : sheet;
+          eRows.push({
+            ref_q2: ref,
+            designation: iDes>-1?xlCell(row[iDes]):'',
+            rack: rack,
+            niveau: iNiv>-1?xlCell(row[iNiv]):'',
+            position: iEmp>-1?xlCell(row[iEmp]):'',
+            sheet: sheet, file: f.name
+          });
+          n++;
+        }
+      }
+      eLoadedNote(f.name, n);
+    }catch(e){ toast('Erreur lecture '+f.name+' : '+e.message,'ko'); }
+  }
+  eBuildPlan();
+}
+let eFileNotes=[];
+function eLoadedNote(name,n){ eFileNotes.push({name,n}); renderEFiles(); }
+function renderEFiles(){
+  $('e_fileList').innerHTML=eFileNotes.map((f,i)=>
+    `<div class="file"><span class="tag cons">Implantation</span><span>${f.name}</span>
+     <span class="sub">· ${f.n} réf(s)</span></div>`).join('');
+}
+
+async function eBuildPlan(){
+  if(!eRows.length){ $('e_previewCard').style.display='none'; return; }
+  const site=($('e_site').value||'BCR').trim();
+  // 1. charger id des articles existants
+  toast('Lecture de la base…');
+  eArticles=new Map();
+  try{
+    let from=0; const step=1000;
+    while(true){
+      const r=await fetch(`${SUPABASE_URL}/rest/v1/articles?select=ref_q2,id&order=ref_q2`,
+        {headers:{...H_READ, Range:`${from}-${from+step-1}`, 'Range-Unit':'items'}});
+      const data=await r.json();
+      if(!Array.isArray(data)) throw new Error(data.message||'lecture impossible');
+      data.forEach(a=>eArticles.set(a.ref_q2,a.id));
+      if(data.length<step) break; from+=step;
+    }
+  }catch(e){ toast('Erreur lecture base : '+e.message,'ko'); return; }
+
+  // 2. détecter les réfs affectées à >1 emplacement distinct (conflit picking)
+  const byRef=new Map();
+  eRows.forEach(row=>{ const code=eCode(site,row); (byRef.get(row.ref_q2)||byRef.set(row.ref_q2,new Set()).get(row.ref_q2)).add(code); });
+
+  // 3. construire le plan
+  ePlan=eRows.map(row=>{
+    const known=eArticles.has(row.ref_q2);
+    const dup=(byRef.get(row.ref_q2)||new Set()).size>1;
+    const state = !known ? 'unknown' : (dup?'dup':'ok');
+    return {...row, site, code:eCode(site,row), article_id:eArticles.get(row.ref_q2)||null, state};
+  });
+  ePlan.sort((a,b)=>({unknown:0,dup:1,ok:2}[a.state]-{unknown:0,dup:1,ok:2}[b.state]));
+  eRenderStats(); eRenderTable();
+  $('e_previewCard').style.display='block';
+}
+function eCode(site,row){ return site+'-'+row.rack
+  +(row.niveau!==''?'-'+row.niveau:'')+(row.position!==''?'-'+row.position:''); }
+
+function eRenderStats(){
+  const known=ePlan.filter(p=>p.state!=='unknown').length;
+  const unk=ePlan.filter(p=>p.state==='unknown').length;
+  const dup=ePlan.filter(p=>p.state==='dup').length;
+  const empl=new Set(ePlan.filter(p=>p.state!=='unknown').map(p=>p.code)).size;
+  $('e_stats').innerHTML=`
+    <div class="stat"><div class="v">${ePlan.length}</div><div class="k">Lignes lues</div></div>
+    <div class="stat new"><div class="v">${empl}</div><div class="k">Emplacements distincts</div></div>
+    <div class="stat"><div class="v">${known}</div><div class="k">Réfs connues</div></div>
+    <div class="stat err"><div class="v">${unk}</div><div class="k">Réfs inconnues</div></div>
+    <div class="stat fill"><div class="v">${dup}</div><div class="k">Réfs en double</div></div>`;
+  $('e_info').textContent = unk?`${unk} réf(s) absente(s) de la base seront ignorées (crée-les d'abord en Mode 1).`:'';
+}
+function eSetFilter(f,el){ eFilter=f; document.querySelectorAll('.chip[data-ef]').forEach(c=>c.classList.remove('on'));
+  el.classList.add('on'); eRenderTable(); }
+function eRenderTable(){
+  const q=($('e_search').value||'').toLowerCase();
+  let rows=ePlan.filter(p=> eFilter==='all'||p.state===eFilter || (eFilter==='ok'&&p.state==='dup'));
+  if(q) rows=rows.filter(p=>p.ref_q2.toLowerCase().includes(q)||p.rack.toLowerCase().includes(q)||(p.designation||'').toLowerCase().includes(q));
+  rows=rows.slice(0,500);
+  const lbl={ok:'OK',unknown:'Réf inconnue',dup:'Réf en double'};
+  const cls={ok:'same',unknown:'new',dup:'fill'};
+  $('e_tblBody').innerHTML=rows.map(p=>`<tr>
+    <td><span class="st ${cls[p.state]}">${lbl[p.state]}</span></td>
+    <td class="mono">${p.ref_q2}</td><td>${p.designation||'—'}</td>
+    <td class="mono">${p.rack}</td><td class="mono">${p.niveau||'—'}</td>
+    <td class="mono">${p.position||'—'}</td><td class="mono">${p.code}</td></tr>`).join('');
+}
+
+async function eRunImport(){
+  const valid=ePlan.filter(p=>p.state!=='unknown');
+  if(!valid.length){ toast('Aucune réf connue à affecter','ko'); return; }
+  const type=$('e_type').value;
+  const emplMap=new Map(); // code -> {site,rack,niveau,position}
+  valid.forEach(p=>{ if(!emplMap.has(p.code)) emplMap.set(p.code,{site:p.site,rack:p.rack,niveau:p.niveau,position:p.position}); });
+  if(!confirm(`Confirmer :\n• ${emplMap.size} emplacement(s) à créer/mettre à jour\n• ${valid.length} affectation(s) article → emplacement (${type})\n\n${ePlan.length-valid.length} réf(s) inconnue(s) ignorée(s).`)) return;
+
+  const btn=$('e_importBtn'); btn.disabled=true;
+  const log=$('e_log'); log.style.display='block'; log.innerHTML='';
+  $('e_progWrap').style.display='block';
+  const write=(m,c='info')=>{ log.innerHTML+=`<span class="${c}">${m}</span>\n`; log.scrollTop=log.scrollHeight; };
+  let done=0; const total=emplMap.size+valid.length;
+  const tick=()=>{ done++; $('e_prog').style.width=(done/total*100)+'%'; };
+
+  // 1. upsert des emplacements (return=representation pour récupérer les id)
+  write(`▶ Upsert de ${emplMap.size} emplacements…`);
+  const codeToId=new Map();
+  const emplArr=[...emplMap.values()];
+  for(let i=0;i<emplArr.length;i+=200){
+    const chunk=emplArr.slice(i,i+200);
+    try{
+      const r=await fetch(`${SUPABASE_URL}/rest/v1/emplacements?on_conflict=site,rack,niveau,position`,
+        {method:'POST', headers:{...H_WRITE, Prefer:'return=representation,resolution=merge-duplicates'},
+         body:JSON.stringify(chunk)});
+      if(r.ok){ const data=await r.json(); data.forEach(e=>codeToId.set(e.code_emplacement,e.id));
+        write(`  ✓ ${data.length} emplacements`,'ok'); }
+      else write(`  ✗ ${r.status} ${await r.text()}`,'ko');
+    }catch(e){ write(`  ✗ ${e.message}`,'ko'); }
+    chunk.forEach(tick);
+  }
+
+  // 2. upsert des liens article_emplacement
+  write(`▶ Affectation de ${valid.length} articles (${type})…`);
+  let ok=0, ko=0;
+  const links=[];
+  for(const p of valid){
+    const eid=codeToId.get(p.code);
+    if(!eid){ ko++; continue; }
+    links.push({ ref_q2:p.ref_q2, article_id:p.article_id, emplacement_id:eid, type_stockage:type });
+  }
+  // dédoublonnage par (ref_q2) : garder 1 affectation picking par article
+  const seen=new Set(); const linksU=[];
+  for(const l of links){ if(seen.has(l.ref_q2)) continue; seen.add(l.ref_q2); linksU.push(l); }
+  for(let i=0;i<linksU.length;i+=200){
+    const chunk=linksU.slice(i,i+200);
+    try{
+      const r=await fetch(`${SUPABASE_URL}/rest/v1/article_emplacement?on_conflict=ref_q2,type_stockage`,
+        {method:'POST', headers:H_WRITE, body:JSON.stringify(chunk)});
+      if(r.ok){ ok+=chunk.length; write(`  ✓ ${chunk.length} affectations`,'ok'); }
+      else{ ko+=chunk.length; write(`  ✗ ${r.status} ${await r.text()}`,'ko'); }
+    }catch(e){ ko+=chunk.length; write(`  ✗ ${e.message}`,'ko'); }
+    chunk.forEach(tick);
+  }
+  write(`\n■ Terminé — ${ok} affectations OK · ${ko} erreur(s).`, ko?'ko':'ok');
+  toast(ko?`Terminé avec ${ko} erreur(s)`:'Emplacements importés ✓', ko?'ko':'ok');
+  btn.disabled=false;
+}
+function eReset(){ eRows=[]; ePlan=[]; eFileNotes=[]; renderEFiles();
+  $('e_previewCard').style.display='none'; $('e_log').style.display='none'; $('e_fileInput').value=''; }
 
 // ==================== TEMPLATES ====================
 function downloadTemplate(kind){
