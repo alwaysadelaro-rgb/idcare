@@ -35,10 +35,12 @@ input:focus{border-color:#2E75B6;box-shadow:0 0 0 3px rgba(46,117,182,.12)}
   <label>Clé SERVICE ROLE — acquisition (écriture)</label>
   <input id="sb_service" type="password" placeholder="eyJhbGci..." spellcheck="false">
   <button class="btn" onclick="save()">💾 Enregistrer la configuration</button>
+  <button class="btn" style="background:#2E75B6;margin-top:10px" onclick="testConn()">🔌 Tester la connexion</button>
   <div class="status" id="status"></div>
   <div class="links">
     <a class="link" href="index.html">🔍 Consultation</a>
     <a class="link" href="admin.html">✏️ Acquisition</a>
+    <a class="link" href="import.html">📥 Import masse</a>
   </div>
 </div>
 <script>
@@ -67,9 +69,40 @@ function save() {
 
 function show(msg, ok) {
   const el = document.getElementById('status');
-  el.textContent = msg;
+  el.innerHTML = msg;
   el.className = 'status ' + (ok ? 'ok' : 'err');
   el.style.display = 'block';
+}
+
+// Compte réel d'articles (via l'en-tête Content-Range de PostgREST)
+async function countRows(url, key, table, extra='') {
+  const r = await fetch(`${url}/rest/v1/${table}?select=ref_q2&limit=1${extra}`,
+    { headers: { apikey:key, Authorization:'Bearer '+key, Prefer:'count=exact' } });
+  if(!r.ok) throw new Error(`${r.status} ${await r.text()}`);
+  const cr = r.headers.get('content-range') || '';   // ex: 0-0/537
+  return cr.includes('/') ? cr.split('/')[1] : '?';
+}
+
+async function testConn() {
+  const url  = document.getElementById('sb_url').value.trim();
+  const anon = document.getElementById('sb_anon').value.trim();
+  const svc  = document.getElementById('sb_service').value.trim();
+  if(!url || !anon) { show('Renseigne au moins l\'URL et la clé ANON.', false); return; }
+  show('⏳ Test en cours…', true);
+  try {
+    const nCons = await countRows(url, anon, 'v_articles_consultation');   // vue consultation (clé anon)
+    let msg = `✅ Consultation OK — <b>${nCons}</b> article(s) visibles.`;
+    if(svc) {
+      try {
+        const nBase = await countRows(url, svc, 'articles');               // table brute (clé service)
+        msg += `<br>✅ Écriture OK — <b>${nBase}</b> article(s) en base.`;
+        if(nCons !== nBase) msg += `<br>⚠️ Écart consultation/base : ${nCons} vs ${nBase} (droits ou vue à vérifier).`;
+      } catch(e) { msg += `<br>❌ Clé SERVICE : ${e.message}`; }
+    }
+    show(msg, true);
+  } catch(e) {
+    show(`❌ Connexion consultation échouée : ${e.message}`, false);
+  }
 }
 </script>
 </body>
