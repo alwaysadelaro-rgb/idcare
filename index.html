@@ -139,9 +139,17 @@ window.addEventListener('load', () => {
 
 async function loadAll() {
   try {
-    const data = await sb.get('v_articles_consultation',
-      'select=*&order=categorie,designation&limit=500');
-    allArticles = data;
+    // Pagination : on charge TOUT le référentiel par pages (le plafond
+    // limit=500 tronquait la base dès qu'elle a dépassé 500 articles).
+    const page = 1000; let offset = 0; let all = [];
+    while (true) {
+      const data = await sb.get('v_articles_consultation',
+        `select=*&order=categorie,designation,ref_q2&limit=${page}&offset=${offset}`);
+      all = all.concat(data);
+      if (data.length < page) break;
+      offset += page;
+    }
+    allArticles = all;
     renderStats();
     renderList();
   } catch(e) {
