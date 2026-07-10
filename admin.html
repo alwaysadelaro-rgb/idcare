@@ -449,6 +449,14 @@
       </div>
     </div>
 
+    <h3 style="margin-top:20px">📝 Commentaire d'appro</h3>
+    <div class="grid">
+      <div class="field" style="grid-column: 1 / -1">
+        <label>Commentaire (visible dans le module appro · le plus récent en haut)</label>
+        <textarea id="commentaire_appro" rows="4" placeholder="Ex: Commander min 6 · fournisseur lent · remplacé par ACC-999…" style="width:100%;resize:vertical;font-family:inherit"></textarea>
+      </div>
+    </div>
+
     <div class="field-checkbox test" style="margin-top:16px">
       <input id="est_test" type="checkbox">
       <label for="est_test">
@@ -1205,7 +1213,7 @@ function fillForm(a) {
   // Texte / Number
   const fields = [
     'ref_q2','designation','statut','categorie','type_article','fournisseur','fournisseur_secondaire',
-    'prix_achat','famille','sous_famille','classe_dm','remplace_ref','motif_remplacement',
+    'prix_achat','famille','sous_famille','classe_dm','remplace_ref','motif_remplacement','commentaire_appro',
     'code_m1','type_m1','sscc_m1','code_m2','type_m2','gtin_contenu_m','ean13_master','gtin14_master',
     'code_sc1','type_sc1','gtin_contenu_sc','ean13_sc','gtin14_sc',
     'code_u1','type_u1','variante_ai20','ean13_unite','gtin14_unite',
@@ -1355,6 +1363,7 @@ async function saveArticle() {
     classe_dm: document.getElementById('classe_dm').value || null,
     remplace_ref: document.getElementById('remplace_ref').value || null,
     motif_remplacement: document.getElementById('motif_remplacement').value || null,
+    commentaire_appro: document.getElementById('commentaire_appro').value || null,
     est_test: document.getElementById('est_test').checked,
 
     code_m1: document.getElementById('code_m1').value || null,
