@@ -134,6 +134,12 @@
       <div class="d">Mise à jour hebdo depuis le module appro DDMRP.</div>
       <span class="badge">à venir</span>
     </div>
+    <div class="mode" data-mode="commentaires" onclick="selectMode('commentaires')">
+      <div class="n">MODE 4</div>
+      <div class="t">Commentaires d'appro</div>
+      <div class="d">Ajoute des commentaires par réf (issus du module appro). Ajout, sans écraser.</div>
+      <span class="badge">migration 02</span>
+    </div>
   </div>
 
   <!-- ================= MODE 1 : ARTICLES ================= -->
@@ -249,6 +255,55 @@
         réutilisera le moteur du mode 1 (upsert par <code>ref_q2</code>).</div>
     </div>
   </div>
+
+  <!-- ================= MODE 4 : COMMENTAIRES ================= -->
+  <div id="panel-commentaires" style="display:none">
+    <div class="card">
+      <h2>1 · Charger la trame de commentaires</h2>
+      <p class="hint">Fichier <code>ref_q2 ; commentaire</code> (CSV ou Excel) — typiquement exporté par le
+        module appro. Chaque commentaire est <b>ajouté</b> à ceux déjà présents (le plus récent en haut, horodaté).</p>
+      <div class="note"><b>Prérequis :</b> exécuter d'abord <code>MIGRATION_02</code> dans Supabase
+        (colonne <code>commentaire_appro</code> + fonction <code>ajouter_commentaire_appro</code>).</div>
+      <p style="margin-top:6px">Trame standard :
+        <span class="dl" onclick="downloadTemplate('commentaires')">⬇ télécharger trame_commentaires.csv</span></p>
+
+      <div style="display:flex;gap:14px;flex-wrap:wrap;align-items:end;margin:16px 0 4px">
+        <div class="field" style="flex:none">
+          <label style="font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em">Auteur (optionnel)</label><br>
+          <input class="search" id="c_auteur" value="" placeholder="ex. Augustin" style="width:160px;flex:none">
+        </div>
+      </div>
+
+      <div class="drop" id="c_drop" onclick="document.getElementById('c_fileInput').click()" style="margin-top:12px">
+        <div class="big">Clique ou dépose la trame commentaires</div>
+        <div class="small">CSV (ref_q2;commentaire) ou Excel</div>
+      </div>
+      <input type="file" id="c_fileInput" accept=".csv,.xlsx,.xls">
+      <div class="files" id="c_fileList"></div>
+    </div>
+
+    <div class="card" id="c_previewCard" style="display:none">
+      <h2>2 · Aperçu avant écriture</h2>
+      <p class="hint">Vérifie les réfs et les commentaires. Rien n'est écrit avant le clic <b>Importer</b>.</p>
+      <div class="stats" id="c_stats"></div>
+      <div class="filterbar">
+        <span class="chip on" data-cf="all" onclick="cSetFilter('all',this)">Tout</span>
+        <span class="chip" data-cf="ok" onclick="cSetFilter('ok',this)">Réf connue</span>
+        <span class="chip" data-cf="unknown" onclick="cSetFilter('unknown',this)">Réf inconnue</span>
+        <input class="search" id="c_search" placeholder="filtrer réf / commentaire…" oninput="cRenderTable()">
+      </div>
+      <div class="tablewrap"><table><thead><tr>
+        <th>État</th><th class="mono">Réf Q2</th><th>Désignation (base)</th><th>Commentaire à ajouter</th>
+      </tr></thead><tbody id="c_tblBody"></tbody></table></div>
+      <div class="btn-row">
+        <button class="btn btn-primary" id="c_importBtn" onclick="cRunImport()">Ajouter les commentaires</button>
+        <button class="btn btn-ghost" onclick="cReset()">Réinitialiser</button>
+        <span id="c_info" class="sub"></span>
+      </div>
+      <div class="bar" id="c_progWrap" style="display:none"><i id="c_prog"></i></div>
+      <div class="log" id="c_log" style="display:none"></div>
+    </div>
+  </div>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -313,7 +368,7 @@ let filter='all';
 function selectMode(m){
   MODE=m;
   document.querySelectorAll('.mode').forEach(el=>el.classList.toggle('active', el.dataset.mode===m));
-  ['articles','emplacements','stock'].forEach(x=>$('panel-'+x).style.display = x===m?'block':'none');
+  ['articles','emplacements','stock','commentaires'].forEach(x=>$('panel-'+x).style.display = x===m?'block':'none');
 }
 
 // ==================== FILE LOADING ====================
@@ -724,11 +779,119 @@ function eReset(){ eRows=[]; ePlan=[]; eFileNotes=[]; renderEFiles();
 function downloadTemplate(kind){
   let csv;
   if(kind==='emplacements') csv='ref_q2;rack;niveau;position;type_stockage;site\nSPAAC;R12;N3;A;PICKING;IDF\n';
+  else if(kind==='commentaires') csv='ref_q2;commentaire\n481010;Article en arret - remplacer par ACC-999\n';
   else csv='ref_q2;stock_mini;stock_maxi;delai_appro_jours\nSPAAC;5;30;7\n';
   const blob=new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8'});
   const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
   a.download=`trame_${kind}.csv`; a.click();
 }
+
+// ==================== MODE 4 : COMMENTAIRES ====================
+let cRows=[];        // {ref_q2, commentaire}
+let cPlan=[];        // {ref_q2, commentaire, state:'ok'|'unknown', designation}
+let cFilter='all';
+const cDrop=$('c_drop');
+['dragover','dragenter'].forEach(e=>cDrop.addEventListener(e,ev=>{ev.preventDefault();cDrop.classList.add('over');}));
+['dragleave','drop'].forEach(e=>cDrop.addEventListener(e,ev=>{ev.preventDefault();cDrop.classList.remove('over');}));
+cDrop.addEventListener('drop',ev=>cHandleFiles(ev.dataTransfer.files));
+$('c_fileInput').addEventListener('change',ev=>cHandleFiles(ev.target.files));
+
+async function cHandleFiles(fileList){
+  const files=[...fileList]; if(!files.length) return;
+  cRows=[];
+  for(const f of files){
+    const buf=await f.arrayBuffer();
+    let grid=[];
+    if(/\.(xlsx|xls)$/i.test(f.name)){
+      if(typeof XLSX==='undefined'){ toast('Lecteur Excel non chargé','ko'); return; }
+      const wb=XLSX.read(buf,{type:'array'});
+      grid=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,defval:''});
+    } else {
+      grid=parseCSV(decodeBuffer(buf));
+    }
+    if(!grid.length) continue;
+    // repérer les colonnes ref_q2 et commentaire
+    const hdr=grid[0].map(h=>String(h).toLowerCase().trim());
+    let iRef=hdr.findIndex(h=>/ref|référence|reference/.test(h));
+    let iCom=hdr.findIndex(h=>/comment/.test(h));
+    if(iRef<0) iRef=0;
+    if(iCom<0) iCom=1;
+    for(let i=1;i<grid.length;i++){
+      const ref=clean(grid[i][iRef]); const com=clean(grid[i][iCom]);
+      if(ref && com) cRows.push({ref_q2:ref, commentaire:com});
+    }
+  }
+  $('c_fileList').innerHTML=`<div class="file"><span>${cRows.length} commentaire(s) lu(s)</span></div>`;
+  await cBuildPlan();
+}
+
+async function cBuildPlan(){
+  // réfs existantes en base (pour signaler les inconnues)
+  const known=new Map();
+  try{
+    let from=0; const size=1000;
+    while(true){
+      const r=await fetch(`${SUPABASE_URL}/rest/v1/articles?select=ref_q2,designation`,
+        {headers:{...H_READ, Range:`${from}-${from+size-1}`}});
+      if(!r.ok) break;
+      const data=await r.json();
+      data.forEach(a=>known.set(String(a.ref_q2), a.designation||''));
+      if(data.length<size) break; from+=size;
+    }
+  }catch(e){ toast('Lecture base impossible : '+e.message,'ko'); }
+  cPlan=cRows.map(row=>({ref_q2:row.ref_q2, commentaire:row.commentaire,
+    state: known.has(row.ref_q2)?'ok':'unknown', designation: known.get(row.ref_q2)||''}));
+  $('c_previewCard').style.display='block';
+  cRenderStats(); cRenderTable();
+}
+function cRenderStats(){
+  const ok=cPlan.filter(p=>p.state==='ok').length, unk=cPlan.length-ok;
+  $('c_stats').innerHTML=
+    `<div class="stat"><div class="v">${cPlan.length}</div><div class="k">commentaires</div></div>`+
+    `<div class="stat"><div class="v" style="color:var(--good)">${ok}</div><div class="k">réf connue</div></div>`+
+    `<div class="stat"><div class="v" style="color:var(--warn)">${unk}</div><div class="k">réf inconnue (ignorée)</div></div>`;
+}
+function cSetFilter(f,el){ cFilter=f; document.querySelectorAll('.chip[data-cf]').forEach(c=>c.classList.remove('on'));
+  el.classList.add('on'); cRenderTable(); }
+function cRenderTable(){
+  const q=($('c_search').value||'').toLowerCase();
+  const rows=cPlan.filter(p=>{
+    if(cFilter==='ok'&&p.state!=='ok') return false;
+    if(cFilter==='unknown'&&p.state!=='unknown') return false;
+    if(q && !(p.ref_q2+' '+p.commentaire+' '+p.designation).toLowerCase().includes(q)) return false;
+    return true;
+  });
+  $('c_tblBody').innerHTML=rows.map(p=>{
+    const st = p.state==='ok'?'<span class="st new">réf connue</span>':'<span class="st" style="background:var(--warn-wash);color:var(--warn)">inconnue</span>';
+    return `<tr><td>${st}</td><td class="mono">${p.ref_q2}</td><td>${p.designation||'—'}</td><td>${p.commentaire}</td></tr>`;
+  }).join('') || '<tr><td colspan="4" style="text-align:center;color:var(--ink-faint);padding:18px">Aucune ligne</td></tr>';
+}
+async function cRunImport(){
+  const valid=cPlan.filter(p=>p.state==='ok');
+  if(!valid.length){ toast('Aucune réf connue à commenter','ko'); return; }
+  const auteur=clean($('c_auteur').value);
+  if(!confirm(`Ajouter ${valid.length} commentaire(s) ?\n${cPlan.length-valid.length} réf(s) inconnue(s) ignorée(s).\n\nLes commentaires s'AJOUTENT (sans écraser les existants).`)) return;
+  const btn=$('c_importBtn'); btn.disabled=true;
+  const log=$('c_log'); log.style.display='block'; log.innerHTML='';
+  $('c_progWrap').style.display='block';
+  const write=(m,c='info')=>{ log.innerHTML+=`<span class="${c}">${m}</span>\n`; log.scrollTop=log.scrollHeight; };
+  let ok=0, ko=0, done=0;
+  write(`▶ Ajout de ${valid.length} commentaire(s) via ajouter_commentaire_appro…`);
+  for(const p of valid){
+    try{
+      const r=await fetch(`${SUPABASE_URL}/rest/v1/rpc/ajouter_commentaire_appro`,
+        {method:'POST', headers:{...H_READ,'Content-Type':'application/json'},
+         body:JSON.stringify({p_ref_q2:p.ref_q2, p_texte:p.commentaire, p_auteur:auteur||null})});
+      if(r.ok){ ok++; } else { ko++; write(`  ✗ ${p.ref_q2} — ${r.status} ${await r.text()}`,'ko'); }
+    }catch(e){ ko++; write(`  ✗ ${p.ref_q2} — ${e.message}`,'ko'); }
+    done++; $('c_prog').style.width=(done/valid.length*100)+'%';
+  }
+  write(`\n■ Terminé — ${ok} ajout(s) OK · ${ko} erreur(s).`, ko?'ko':'ok');
+  toast(ko?`Terminé avec ${ko} erreur(s)`:'Commentaires ajoutés ✓', ko?'ko':'ok');
+  btn.disabled=false;
+}
+function cReset(){ cRows=[]; cPlan=[]; $('c_fileList').innerHTML='';
+  $('c_previewCard').style.display='none'; $('c_log').style.display='none'; $('c_fileInput').value=''; }
 </script>
 </body>
 </html>
